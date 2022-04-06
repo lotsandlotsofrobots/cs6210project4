@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package masterworker;
+
+
+service Mapper {
+    rpc MapShard(ShardInfo) returns (MapShardResults) {}
+    rpc Ping(PingMsg) returns (PingAck) {}
+}
+
+message MapShardResults {
+    int32  returnValue = 1;
+    string outputFile = 2;
+}
+
+message ShardInfo
+{
+    string fileName = 1;
+    uint64 offset = 2;
+    uint64 shardSize = 3;
+}
+
+message PingMsg {
+
+}
+
+message PingAck {
+
+}
+
+
+service Reducer {
+    rpc ReduceMapperOutput(MappedDataInfo) returns (ReduceMappedDataResults) {}
+    rpc Ping(PingMsg) returns (PingAck) {}
+}
+
+message MappedDataInfo
+{
+    string fileName = 1;
+}
+
+message ReduceMappedDataResults
+{
+    int32  returnValue = 1;
+    string outputFile = 2;
+}
