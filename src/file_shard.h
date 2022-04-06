@@ -26,6 +26,8 @@ struct FileShard {
 /* CS6210_TASK: Create fileshards from the list of input files, map_kilobytes etc. using mr_spec you populated  */
 inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fileShards)
 {
+		THIS NEEDS A LITTLE WORK - NEED TO COMBINE SMALL SHARDS INTO BIG ONES
+
 		for (int fileID = 0; fileID < mr_spec.inputFiles.size(); fileID++)
 		{
 				std::cout << mr_spec.inputFiles[fileID] << "\n";

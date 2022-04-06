@@ -17,7 +17,7 @@ user_id=cs6210
 */
 
 
-/* CS6210_TASK: Create your data structure here for storing spec from the config file */
+/* DONECS6210_TASK: Create your data structure here for storing spec from the config file */
 struct MapReduceSpec {
 		int												 numberOfWorkers = -1;
 		std::vector<std::string>   ipAddressAndPorts;
@@ -29,7 +29,7 @@ struct MapReduceSpec {
 };
 
 
-/* CS6210_TASK: Populate MapReduceSpec data structure with the specification from the config file */
+/* DONECS6210_TASK: Populate MapReduceSpec data structure with the specification from the config file */
 inline bool read_mr_spec_from_config_file(const std::string& config_filename, MapReduceSpec& mr_spec)
 {
 		std::ifstream configFile(config_filename);
