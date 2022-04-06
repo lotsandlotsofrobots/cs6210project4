@@ -3,8 +3,10 @@ syntax = "proto3";
 package masterworker;
 
 
-service Mapper {
-    rpc MapShard(ShardInfo) returns (MapShardResults) {}
+service MapperReducer {
+    rpc MapShard(ShardInfo) returns (ShardStartingMsg) {}
+    rpc ShardResults(MapShardResults) returns (MapShardResultsReceived) {}
+    rpc ReduceMapperOutput(MappedDataInfo) returns (ReduceMappedDataResults) {}
     rpc Ping(PingMsg) returns (PingAck) {}
 }
 
@@ -20,18 +22,23 @@ message ShardInfo
     uint64 shardSize = 3;
 }
 
+message ShardStartingMsg
+{
+    int32 hello = 1;
+}
+
+message MapShardResultsReceived
+{
+
+}
+
+
 message PingMsg {
 
 }
 
 message PingAck {
 
-}
-
-
-service Reducer {
-    rpc ReduceMapperOutput(MappedDataInfo) returns (ReduceMappedDataResults) {}
-    rpc Ping(PingMsg) returns (PingAck) {}
 }
 
 message MappedDataInfo

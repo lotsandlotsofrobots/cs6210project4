@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <utility>
+#include <vector>
 
 /* CS6210_TASK Implement this data structureas per your implementation.
 		You will need this when your worker is running the map task*/
@@ -31,7 +32,7 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 {
 		std::cout << "Dummy emit by BaseMapperInternal: " << key << ", " << val << std::endl;
 
-		mappedKeyValuePairs.push_back(make_pair(key, value));
+		mappedKeyValuePairs.push_back(make_pair(key, val));
 }
 
 

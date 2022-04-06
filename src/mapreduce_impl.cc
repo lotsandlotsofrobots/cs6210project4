@@ -6,7 +6,7 @@
 
 /* DON'T touch this function */
 bool MapReduceImpl::run(const std::string& config_filename) {
-    
+
     if(!read_and_validate_spec(config_filename)) {
         std::cerr << "Spec not configured properly." << std::endl;
         return false;
@@ -40,6 +40,9 @@ bool MapReduceImpl::create_shards() {
 
 /* DON'T touch this function */
 bool MapReduceImpl::run_master() {
+
+    std::cout << "In run master!\n";
+
     Master master(mr_spec_, file_shards_);
     return master.run();
 }
