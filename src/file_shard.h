@@ -18,7 +18,7 @@ struct ShardPart {
 
 };
 
-/* CS6210_TASK: Create your own data structure here, where you can hold information about file splits,
+/* Kinda done - needs to be vector of shardpieces - CS6210_TASK: Create your own data structure here, where you can hold information about file splits,
      that your master would use for its own bookkeeping and to convey the tasks to the workers for mapping */
 struct FileShard {
 	std::string fileName;
@@ -27,7 +27,7 @@ struct FileShard {
 };
 
 
-/* CS6210_TASK: Create fileshards from the list of input files, map_kilobytes etc. using mr_spec you populated  */
+/* kinda done - needs to push shard pieces - CS6210_TASK: Create fileshards from the list of input files, map_kilobytes etc. using mr_spec you populated  */
 inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fileShards)
 {
 		//THIS NEEDS A LITTLE WORK - NEED TO COMBINE SMALL SHARDS INTO BIG ONES

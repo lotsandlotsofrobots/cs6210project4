@@ -12,7 +12,6 @@ service MapperReducer {
 
 message MapShardResults {
     int32  returnValue = 1;
-    string outputFile = 2;
 }
 
 message ShardInfo
@@ -20,6 +19,8 @@ message ShardInfo
     string fileName = 1;
     uint64 offset = 2;
     uint64 shardSize = 3;
+    string outputDirectory = 4;
+    uint32 numberOfFiles = 5;
 }
 
 message ShardStartingMsg

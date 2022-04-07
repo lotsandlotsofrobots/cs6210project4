@@ -17,7 +17,6 @@ using masterworker::MapperReducer;
 
 
 
-
 /* CS6210_TASK: Handle all the bookkeeping that Master is supposed to do.
 	This is probably the biggest task for this project, will test your understanding of map reduce */
 class Master {
@@ -30,6 +29,7 @@ class Master {
 		bool run();
 
 		void SendShardRPCToWorker(std::string ipAndPort, FileShard &shard);
+		void SendPingRPCToWorker(std::string ipAndPort);
 
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
@@ -64,9 +64,16 @@ bool Master::run() {
 		  SendShardRPCToWorker(ipAddressAndPort, shard);
 	}
 
+	for (int i = 0; i < mr_spec->ipAddressAndPorts.size(); i++)
+	{
+			std::string ipAddressAndPort = mr_spec->ipAddressAndPorts[i];
+			//FileShard shard = (*fileShards)[i];
+			SendPingRPCToWorker(ipAddressAndPort);
+	}
 
 	return true;
 }
+
 
 void Master::SendShardRPCToWorker(std::string ipAndPort, FileShard &shard)
 {
@@ -90,6 +97,8 @@ void Master::SendShardRPCToWorker(std::string ipAndPort, FileShard &shard)
 		request.set_filename(shard.fileName);
 		request.set_offset(shard.offset);
 		request.set_shardsize(shard.shardSize);
+		request.set_outputdirectory(mr_spec->outputDir);
+		request.set_numberoffiles(mr_spec->numberOfOutputFiles);
 
 		// create a stub using the channel
 		mapStub = masterworker::MapperReducer::NewStub(channel);
@@ -110,10 +119,56 @@ void Master::SendShardRPCToWorker(std::string ipAndPort, FileShard &shard)
 		bool ok = false;
 		completionQueue.Next(&got_tag, &ok);
 
-		if (ok && got_tag == (void*)1) {
+		if (ok && got_tag == (void*)1)
+		{
 			  std::cout << " - Got okay!\n";
 				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
 				std::cout << " - status msg is " << (status.error_message()) << "\n";
 		}
 
+}
+
+
+void Master::SendPingRPCToWorker(std::string ipAndPort)
+{
+		std::cout << "Sending ping to worker @ " << ipAndPort << "!\n";
+
+		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+		grpc::CompletionQueue          completionQueue;
+		grpc::ClientContext 					 context;
+
+		masterworker::PingMsg          request;
+		masterworker::PingAck          response;
+
+		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::PingAck>>  responseReader;
+
+		grpc::Status                   status;
+
+		channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+
+		mapStub = masterworker::MapperReducer::NewStub(channel);
+
+		// create an asynchronous response reader using the stub, request, and completion queue
+		//   - this will watch for the response in the background
+		//   - then read it into a BidReply
+		//   - then let us know when the BidReply is available for reading via the completionQueue
+		responseReader =
+				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::PingAck>>
+						(mapStub->AsyncPing(&context, request, &completionQueue));
+
+		std::cout << " - Calling finish\n";
+
+		responseReader->Finish(&response, &status, (void*)(long long int) 1);
+
+		void* got_tag;
+		bool ok = false;
+		completionQueue.Next(&got_tag, &ok);
+
+		if (ok && got_tag == (void*)1)
+		{
+			  std::cout << " - Got okay!\n";
+				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
+				std::cout << " - status msg is " << (status.error_message()) << "\n";
+		}
 }

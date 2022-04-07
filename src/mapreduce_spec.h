@@ -23,7 +23,7 @@ struct MapReduceSpec {
 		std::vector<std::string>   ipAddressAndPorts;
 		std::vector<std::string>   inputFiles;
 		std::string 						   outputDir = "null";
-		std::string                numberOfOutputFiles = "null";
+		int                        numberOfOutputFiles = 0;
 		unsigned long long 				 desiredShardSize = 0;
 		std::string                userID = "null";
 };
@@ -114,7 +114,15 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 				}
 				else if (key == "n_output_files")
 				{
-					  mr_spec.numberOfOutputFiles = value;
+						try
+						{
+								mr_spec.numberOfOutputFiles = stoi(value);
+						}
+						catch (std::exception &e)
+						{
+								std::cout << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
+								return false;
+						}
 				}
 				else if (key == "map_kilobytes")
 				{
@@ -140,7 +148,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 }
 
 
-/* CS6210_TASK: validate the specification read from the config file */
+/* MOSTLY CS6210_TASK: validate the specification read from the config file */
 inline bool validate_mr_spec(const MapReduceSpec& mr_spec)
 {
 		std::string error = "";
@@ -164,7 +172,7 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec)
 				std::cout << "outputDir not configured.\n";
 				return false;
 		}
-		if (mr_spec.numberOfOutputFiles == "null")
+		if (mr_spec.numberOfOutputFiles == 0)
 		{
 				std::cout << "numberOfOutputFiles not configured.\n";
 				return false;
