@@ -39,7 +39,7 @@ message PingMsg {
 }
 
 message PingAck {
-
+    int32 ack = 1;
 }
 
 message MappedDataInfo

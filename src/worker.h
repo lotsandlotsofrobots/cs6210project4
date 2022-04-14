@@ -93,16 +93,8 @@ public:
 		void Map(std::string s);
 
 protected:
-		// The means of communication with the gRPC runtime for an asynchronous
-		// server.
 		MapperReducer::AsyncService* service_;
-
-		// The producer-consumer queue where for asynchronous server notifications.
 		ServerCompletionQueue* cq_;
-
-		// Context for the rpc, allowing to tweak aspects of it such as the use
-		// of compression, authentication, as well as to send metadata back to the
-		// client.
 		ServerContext ctx_;
 
 		CallStatus status_;  // The current serving state.
@@ -115,87 +107,11 @@ protected:
 
 class MapperShardCallData : public MapperCallData {
 public:
-		// Take in the "service" instance (in this case representing an asynchronous
-		// server) and the completion queue "cq" used for asynchronous communication
-	  // with the gRPC runtime.
 		MapperShardCallData(MapperReducer::AsyncService* service, ServerCompletionQueue* cq, Worker * worker);
-		/*
-				: responder_(&ctx_)
-		{
-				 service_ = service;
-				 cq_ = cq;
-			   status_  = CREATE;
-
-				 // Invoke the serving logic right away.
-			 	Proceed();
-		}
-*/
-
 		void StartWorkerMapThread();
-		/*
-		{
-		    t = std::thread(MapDataShard, this);
-		}
-		*/
-
 		FileShard GetFileShard();
-		/*
-		{
-			  FileShard fileShard;
-				fileShard.fileName = request_.filename();
-				fileShard.offset = request_.offset();
-				fileShard.shardSize = request_.shardsize();
-
-				return fileShard;
-		}
-		*/
-
 		virtual void Proceed();
-		/*
-		{
-				if (status_ == CREATE)
-				{
-						status_ = PROCESS;
-
-				 		// As part of the initial CREATE state, we *request* that the system
-				 		// start processing SayHello requests. In this request, "this" acts are
-				 		// the tag uniquely identifying the request (so that different CallData
-				 		// instances can serve different requests concurrently), in this case
-				 		// the memory address of this CallData instance.
-
-						std::cout << "Requesting mapshard\n";
-				 		service_->RequestMapShard(&ctx_, &request_, &responder_, cq_, cq_, this);
-				}
-				else if (status_ == PROCESS)
-				{
-						// Spawn a new CallData instance to serve new clients while we process
-						// the one for this CallData. The instance will deallocate itself as
-						// part of its FINISH state.
-						std::cout << "Got it, now creating a new mapshardcalldata and startworkmapthread\n";
-						new MapperShardCallData(service_, cq_);
-						StartWorkerMapThread();
-				}
-				else
-				{
-						GPR_ASSERT(status_ == FINISH);
-						// Once in the FINISH state, deallocate ourselves (CallData).
-
-						t.join();
-
-						std::cout << "t was joined!\n";
-
-						delete this;
-				}
-		}
-		*/
-
-		void Finish();
-		/*
-		{
-			status_ = FINISH;
-			responder_.Finish(reply_, grpc::Status::OK, this);
-		}
-		*/
+    void Finish();
 
 	private:
 			masterworker::ShardInfo request_;
@@ -218,66 +134,10 @@ public:
 class MapperPingCallData : public MapperCallData {
 public:
 
-		// Take in the "service" instance (in this case representing an asynchronous
-		// server) and the completion queue "cq" used for asynchronous communication
-	  // with the gRPC runtime.
 		MapperPingCallData(MapperReducer::AsyncService* service, ServerCompletionQueue* cq, Worker * worker);
-		/*
-				: responder_(&ctx_)
-		{
-		    service_ = service;
-				cq_ = cq;
-				status_ = CREATE;
-
-			 	 // Invoke the serving logic right away.
-			 	Proceed();
-		}
-		*/
 
 		void Proceed();
-		/*
-		{
-				if (status_ == CREATE)
-				{
-						status_ = PROCESS;
-
-				 		// As part of the initial CREATE state, we *request* that the system
-				 		// start processing SayHello requests. In this request, "this" acts are
-				 		// the tag uniquely identifying the request (so that different CallData
-				 		// instances can serve different requests concurrently), in this case
-				 		// the memory address of this CallData instance.
-				 		service_->RequestPing(&ctx_, &request_, &responder_, cq_, cq_, this);
-				}
-				else if (status_ == PROCESS)
-				{
-						// Spawn a new CallData instance to serve new clients while we process
-						// the one for this CallData. The instance will deallocate itself as
-						// part of its FINISH state.
-						new MapperPingCallData(service_, cq_);
-
-						status_ = FINISH;
-						responder_.Finish(reply_,  grpc::Status::OK, this);
-				}
-				else
-				{
-						GPR_ASSERT(status_ == FINISH);
-						// Once in the FINISH state, deallocate ourselves (CallData).
-						delete this;
-				}
-
-		}
-		*/
-
 		void Finish();
-		/*
-		{
-			mapper->impl_->Done();
-
-			std::cout << "Worker done with this shard.\n";
-			status_ = FINISH;
-			responder_.Finish(reply_, grpc::Status::OK, this);
-		}
-    */
 
 	private:
 			masterworker::PingMsg request_;
@@ -301,9 +161,44 @@ void MapDataShard(MapperShardCallData * callData)
 {
 		auto mapper = get_mapper_from_task_factory("cs6210");
 
-		FileShard fileShard = callData->GetFileShard();
+		FileShard fileShardArg = callData->GetFileShard();
 
-		callData->Map("I m just a 'dummy', a \"dummy line\"");
+		// First open the file(s)
+
+		std::ifstream shard(fileShardArg.fileName);
+
+		shard.seekg(0, shard.end);
+		int fileLength = shard.tellg();
+
+		if (fileShardArg.offset + fileShardArg.shardSize > fileLength)
+		{
+				std::cout << "offset + size > length!\n";
+			  // TODO handle error here.
+		}
+
+		shard.seekg(fileShardArg.offset);
+		int position = shard.tellg();
+
+		std::string record;
+		while(getline(shard, record) && (position - fileShardArg.offset) < fileShardArg.shardSize)
+		{
+			  callData->Map(record);
+		}
+
+		position = shard.tellg();
+
+		if (position != fileShardArg.offset + fileShardArg.shardSize)
+		{
+				std::cout << "Something went wrong here..\n";
+		    // todo figure out what to do with this
+		}
+		else
+		{
+			  std::cout << "Done mapping!\n";
+		}
+
+		shard.close();
+
 		callData->Finish();
 }
 
@@ -334,13 +229,9 @@ Worker::Worker(std::string ip_addr_port) {
 	so you can manipulate them however you want when running map/reduce tasks*/
 
 bool Worker::run() {
-	/*  Below 5 lines are just examples of how you will call map and reduce
-		Remove them once you start writing your own logic */
 
-		// gRPC receive instructions here, then feed to map
-
-
-		builder.AddListeningPort("0.0.0.0:50051", InsecureServerCredentials());
+		//builder.AddListeningPort("0.0.0.0:50051", InsecureServerCredentials());
+		builder.AddListeningPort(ipAndPort, InsecureServerCredentials());
 		builder.RegisterService(&asyncService);
 
 		completionQueue = builder.AddCompletionQueue();
@@ -515,6 +406,8 @@ MapperPingCallData::MapperPingCallData(MapperReducer::AsyncService* service, Ser
 		status_ = CREATE;
 		worker = w;
 
+
+		std::cout << "Requesting ping.\n";
 		 // Invoke the serving logic right away.
 		Proceed();
 }
@@ -540,7 +433,10 @@ void MapperPingCallData::Proceed()
 				// part of its FINISH state.
 				new MapperPingCallData(service_, cq_, worker);
 
+				std::cout << "Responding to ping!\n";
+
 				status_ = FINISH;
+				reply_.set_ack(99);
 				responder_.Finish(reply_,  grpc::Status::OK, this);
 		}
 		else

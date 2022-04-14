@@ -6,6 +6,10 @@
 #include "masterworker.grpc.pb.h"
 #include <grpcpp/grpcpp.h>
 
+#include <time.h>
+#include <stdlib.h>
+#include <sys/time.h>
+
 // grpc namespace imports
 using grpc::InsecureServerCredentials;
 using grpc::Server;
@@ -19,7 +23,25 @@ using masterworker::MapperReducer;
 
 /* CS6210_TASK: Handle all the bookkeeping that Master is supposed to do.
 	This is probably the biggest task for this project, will test your understanding of map reduce */
+
 class Master {
+
+	enum WorkerState
+	{
+		  IDLE = 0,
+			BUSY = 1,
+			MISSING = 2
+	};
+
+	struct WorkerStatus
+	{
+			int                 workerID;
+			std::string         ipAndPort;
+			WorkerState         state;
+			FileShard *         assignedShard;
+			unsigned long long  lastPingTime;
+	};
+
 
 	public:
 		/* DON'T change the function signature of this constructor */
@@ -29,7 +51,7 @@ class Master {
 		bool run();
 
 		void SendShardRPCToWorker(std::string ipAndPort, FileShard &shard);
-		void SendPingRPCToWorker(std::string ipAndPort);
+		void SendPingRPCToWorker(Master::WorkerStatus * ws);
 
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
@@ -51,13 +73,59 @@ Master::Master(const MapReduceSpec& mr_spec, const std::vector<FileShard>& file_
 /* CS6210_TASK: Here you go. once this function is called you will complete whole map reduce task and return true if succeeded */
 bool Master::run() {
 
+	srand(time(NULL));
+
 	// for each worker in worker list from file
 	//   assign work based on number of bytes per shard
 	//
 
 	std::cout << "In master::run()!\n";
 
+	// enter the main processing loop
+
+	std::vector<WorkerStatus*>  idleWorkers;
+	std::vector<WorkerStatus*>  busyWorkers;
+	std::vector<WorkerStatus*>  deadWorkers;
+
+	std::vector<FileShard*>    completedShards;  // just store a pointer to the shard, no point to duplicating memory
+
 	for (int i = 0; i < mr_spec->ipAddressAndPorts.size(); i++)
+	{
+		  WorkerStatus * ws = new WorkerStatus;
+			ws->workerID = i;
+			ws->ipAndPort = mr_spec->ipAddressAndPorts[i];
+			ws->state = IDLE;
+			ws->assignedShard = NULL;
+			ws->lastPingTime = 0;
+
+
+			SendPingRPCToWorker(ws);
+
+			if (ws->state == MISSING)
+			{
+				  deadWorkers.push_back(ws);
+			}
+			else
+			{
+  				idleWorkers.push_back(ws);
+			}
+
+
+			// main processing loop
+			// while true:
+			//     while workers in dead workers:
+			//         try to ping
+			//         if succeeded AND idle give work
+			//	  		 if succeeded AND busy, wait on work complete
+			//
+			//     for
+	}
+
+
+
+
+
+	/*for (int i = 0; i < mr_spec->ipAddressAndPorts.size(); i++)
 	{
 			std::string ipAddressAndPort = mr_spec->ipAddressAndPorts[i];
 			FileShard shard = (*fileShards)[i];
@@ -69,7 +137,7 @@ bool Master::run() {
 			std::string ipAddressAndPort = mr_spec->ipAddressAndPorts[i];
 			//FileShard shard = (*fileShards)[i];
 			SendPingRPCToWorker(ipAddressAndPort);
-	}
+	}*/
 
 	return true;
 }
@@ -129,11 +197,16 @@ void Master::SendShardRPCToWorker(std::string ipAndPort, FileShard &shard)
 }
 
 
-void Master::SendPingRPCToWorker(std::string ipAndPort)
+void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 {
-		std::cout << "Sending ping to worker @ " << ipAndPort << "!\n";
+		if (ws == NULL)
+		{
+	      std::cout << "ERROR:  Could not send ping to worker because ws was null!";
+		}
 
-		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+		std::cout << "Sending ping to worker @ " << ws->ipAndPort << "!\n";
+
+		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
 		grpc::CompletionQueue          completionQueue;
 		grpc::ClientContext 					 context;
 
@@ -145,7 +218,7 @@ void Master::SendPingRPCToWorker(std::string ipAndPort)
 
 		grpc::Status                   status;
 
-		channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+		channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
 
 		mapStub = masterworker::MapperReducer::NewStub(channel);
 
@@ -159,16 +232,42 @@ void Master::SendPingRPCToWorker(std::string ipAndPort)
 
 		std::cout << " - Calling finish\n";
 
-		responseReader->Finish(&response, &status, (void*)(long long int) 1);
+		long long int randTag = rand();
+		void * tag = (void*)randTag;
+
+		responseReader->Finish(&response, &status, (void*)tag);
 
 		void* got_tag;
 		bool ok = false;
-		completionQueue.Next(&got_tag, &ok);
 
-		if (ok && got_tag == (void*)1)
+		gpr_timespec deadline;
+		deadline.clock_type = GPR_TIMESPAN;
+		deadline.tv_sec = 1;
+		deadline.tv_nsec = 0;
+
+		grpc::CompletionQueue::NextStatus pingStatus = completionQueue.AsyncNext(&got_tag, &ok, deadline);
+
+		// regardless of response, record the time we pinged it.
+		struct timeval thetime;
+		gettimeofday(&thetime, NULL);
+
+		ws->lastPingTime = thetime.tv_sec;
+
+		if (pingStatus == grpc::CompletionQueue::GOT_EVENT && ok && got_tag == tag)
 		{
 			  std::cout << " - Got okay!\n";
 				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
 				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cout << " - response is " << response.ack() << "\n";
+		}
+		else
+		{
+			  std::cout << "Worker did not respond to ping!\n";
+				std::cout << "Moving worker to \"missing\" state until a response is reached.\n";
+
+				std::cout << "Okay was: " << std::to_string(ok) << "\n";
+				std::cout << "got_tag was: " << got_tag << " and we expected " << tag << "\n";
+
+				ws->state = MISSING;
 		}
 }

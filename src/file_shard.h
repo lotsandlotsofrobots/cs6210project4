@@ -21,9 +21,11 @@ struct ShardPart {
 /* Kinda done - needs to be vector of shardpieces - CS6210_TASK: Create your own data structure here, where you can hold information about file splits,
      that your master would use for its own bookkeeping and to convey the tasks to the workers for mapping */
 struct FileShard {
+	int shardID;
 	std::string fileName;
 	int   offset;     // this will be an offset into an mmapped file
 	int   shardSize;  // how many bytes to read
+	std::string mapOutputFilename;
 };
 
 
@@ -31,6 +33,8 @@ struct FileShard {
 inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fileShards)
 {
 		//THIS NEEDS A LITTLE WORK - NEED TO COMBINE SMALL SHARDS INTO BIG ONES
+
+		int shardID = 0;
 
 		for (int fileID = 0; fileID < mr_spec.inputFiles.size(); fileID++)
 		{
@@ -50,7 +54,7 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 
 				unsigned long long fileSize = lseek(fd, 0, SEEK_END);
 
-				void * fileMMAP = mmap(NULL, fileSize, PROT_READ, MAP_PRIVATE, fd, 0);
+				void * fileMMAP = mmap(NULL, fileSize, PROT_READ, MAP_SHARED, fd, 0);
 
 				unsigned long long shardStart = 0;
 				unsigned long long candidateShardEnd = 0;
@@ -87,6 +91,8 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 								candidateShardEnd = offset;
 
 								FileShard fs;
+								fs.shardID = shardID;
+								shardID++;
 								fs.fileName = filePath;
 								fs.offset = shardStart;
 								fs.shardSize  = candidateShardEnd - shardStart;
@@ -106,6 +112,8 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 								}
 
 								FileShard fs;
+								fs.shardID = shardID;
+								shardID++;
 								fs.fileName = filePath;
 								fs.offset = shardStart;
 								fs.shardSize = candidateShardEnd - shardStart;
@@ -120,6 +128,8 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 								if (shardStart + desiredShardSize > fileSize)
 								{
 										FileShard fs;
+										fs.shardID = shardID;
+										shardID++;
 										fs.fileName = filePath;
 										fs.offset = shardStart;
 										fs.shardSize = fileSize - shardStart;
@@ -134,8 +144,6 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 		}
 
 		std::cout << "Created " << fileShards.size() << " shards!\n";
-
-
 
 		return true;
 }
