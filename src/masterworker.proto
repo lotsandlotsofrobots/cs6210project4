@@ -4,51 +4,47 @@ package masterworker;
 
 
 service MapperReducer {
-    rpc MapShard(ShardInfo) returns (ShardStartingMsg) {}
-    rpc ShardResults(MapShardResults) returns (MapShardResultsReceived) {}
-    rpc ReduceMapperOutput(MappedDataInfo) returns (ReduceMappedDataResults) {}
-    rpc Ping(PingMsg) returns (PingAck) {}
+    rpc Ping(EmptyMsg) returns (Ack) {}
+    rpc SetWorkerInfo(WorkerInfo) returns (Ack) {}
+
+    rpc MapShard(ShardInfo) returns (Ack) {}
+    rpc WriteShardToIntermediateFile(EmptyMsg) returns (Ack) {}
+    rpc DiscardShardResults(EmptyMsg) returns (Ack) {}
+
+    rpc Reduce(ReduceSubset) returns (Ack) {}
 }
 
-message MapShardResults {
-    int32  returnValue = 1;
-}
 
 message ShardInfo
 {
     string fileName = 1;
     uint64 offset = 2;
     uint64 shardSize = 3;
-    string outputDirectory = 4;
-    uint32 numberOfFiles = 5;
+    int32  shardID = 4;
 }
 
-message ShardStartingMsg
+
+message WorkerInfo
 {
-    int32 hello = 1;
+    int32 workerID = 1;
+    string outputDirectory = 2;
+    int32 numberOfWorkers = 3;
+    int32 numberOfFiles = 4;
 }
 
-message MapShardResultsReceived
+
+
+message EmptyMsg
 {
 
 }
 
-
-message PingMsg {
-
-}
-
-message PingAck {
-    int32 ack = 1;
-}
-
-message MappedDataInfo
+message ReduceSubset
 {
-    string fileName = 1;
+    int32 subset = 1;
 }
 
-message ReduceMappedDataResults
+message Ack
 {
-    int32  returnValue = 1;
-    string outputFile = 2;
+    int32 response = 1;
 }

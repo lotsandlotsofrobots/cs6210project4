@@ -15,7 +15,7 @@ add_dependencies(mapreducelib p4protolib)
 
 add_library(
   mr_workerlib #library name
-  mr_task_factory.cc run_worker.cc #sources
+  mr_task_factory.cc run_worker.cc CallDataBase.cc MapperShardCallData.cc PingCallData.cc worker.cc SetWorkerInfoCallData.cc WriteShardToIntermediateFileCallData.cc DiscardShardResultsCallData.cc #sources
   mr_tasks.h worker.h ) #headers
 target_link_libraries(mr_workerlib p4protolib)
 target_include_directories(mr_workerlib PUBLIC ${MAPREDUCE_INCLUDE_DIR})

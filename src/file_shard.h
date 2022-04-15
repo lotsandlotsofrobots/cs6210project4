@@ -25,7 +25,6 @@ struct FileShard {
 	std::string fileName;
 	int   offset;     // this will be an offset into an mmapped file
 	int   shardSize;  // how many bytes to read
-	std::string mapOutputFilename;
 };
 
 
@@ -65,10 +64,10 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 				{
 						if( ((char*)fileMMAP)[offset] == '\n' )
 						{
-								candidateShardEnd = offset - 1;
+								candidateShardEnd = offset;// - 1;
 						}
 
-						unsigned long long currentSize = offset - shardStart;
+						unsigned long long currentSize = offset - shardStart + 1;
 
 						// if we haven't reached EOF
 						if ( offset < fileSize )
@@ -120,7 +119,8 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 								fileShards.push_back(fs);
 
 								// increment everything so we start this process again
-								shardStart = candidateShardEnd + 2;
+								//shardStart = candidateShardEnd + 2;
+								shardStart = candidateShardEnd + 1;
 								candidateShardEnd = shardStart;
 								offset = shardStart;
 

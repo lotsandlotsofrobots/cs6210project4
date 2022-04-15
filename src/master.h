@@ -30,7 +30,9 @@ class Master {
 	{
 		  IDLE = 0,
 			BUSY = 1,
-			MISSING = 2
+			DONE = 2,
+			ERROR = 3,
+			MISSING = 4
 	};
 
 	struct WorkerStatus
@@ -50,24 +52,32 @@ class Master {
 		/* DON'T change this function's signature */
 		bool run();
 
-		void SendShardRPCToWorker(std::string ipAndPort, FileShard &shard);
+		//void SendShardRPCToWorker(std::string ipAndPort, FileShard &shard);
 		void SendPingRPCToWorker(Master::WorkerStatus * ws);
+		void SendWorkerInfoToWorker(int i, WorkerStatus *ws);
+		void SendShardRPCToWorker(WorkerStatus * ws, FileShard &shard);
 
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
 
 		const MapReduceSpec * mr_spec;
-		const std::vector<FileShard> * fileShards;
-
+		//const std::vector<FileShard> fileShards;
+		std::vector<FileShard> fileShards;
 };
 
 
 /* CS6210_TASK: This is all the information your master will get from the framework.
 	You can populate your other class data members here if you want */
-Master::Master(const MapReduceSpec& mr_spec, const std::vector<FileShard>& file_shards) {
+Master::Master(const MapReduceSpec& mr_spec, const std::vector<FileShard>& file_shards)
+{
 		this->mr_spec = &mr_spec;
-		this->fileShards = &file_shards;
+
+		for(int i = 0; i < file_shards.size(); i++)
+		{
+			  fileShards.push_back(file_shards[i]);
+		}
 }
+
 
 
 /* CS6210_TASK: Here you go. once this function is called you will complete whole map reduce task and return true if succeeded */
@@ -87,7 +97,8 @@ bool Master::run() {
 	std::vector<WorkerStatus*>  busyWorkers;
 	std::vector<WorkerStatus*>  deadWorkers;
 
-	std::vector<FileShard*>    completedShards;  // just store a pointer to the shard, no point to duplicating memory
+	std::vector<FileShard>		 assignedShards;
+	std::vector<FileShard>    completedShards;  // just store a pointer to the shard, no point to duplicating memory
 
 	for (int i = 0; i < mr_spec->ipAddressAndPorts.size(); i++)
 	{
@@ -98,7 +109,6 @@ bool Master::run() {
 			ws->assignedShard = NULL;
 			ws->lastPingTime = 0;
 
-
 			SendPingRPCToWorker(ws);
 
 			if (ws->state == MISSING)
@@ -108,20 +118,62 @@ bool Master::run() {
 			else
 			{
   				idleWorkers.push_back(ws);
+					SendWorkerInfoToWorker(i, ws);
 			}
-
-
-			// main processing loop
-			// while true:
-			//     while workers in dead workers:
-			//         try to ping
-			//         if succeeded AND idle give work
-			//	  		 if succeeded AND busy, wait on work complete
-			//
-			//     for
 	}
 
 
+	// main processing loop
+	// while completedShards queue is not same size as shardsQueue:
+	//     while workers in dead workers:
+	//         try to ping
+	//         if succeeded AND idle give work
+	//	  		 if succeeded AND busy, wait on work complete
+	//         if failed, assign their assignedShard over to someone else(?)
+	//             if it comes back late, we will just ignore whichever result comes back last
+	//
+	//     (remember, workerstatus gets put back in idle queue when done!)
+	//
+	//     while workers in idle workers:
+	//         move their assignedShard to completedShards
+	//		     pass them a new shard(s) to work on
+	//
+	//     once all shards are mapped, send MapDone msg?
+	//     why though, just have it emit to files as it goes???
+
+	int numberOfShards = fileShards.size();
+	while (completedShards.size() != numberOfShards)
+	{
+			// figure out what to do with dead workers here
+			// what if one never starts?
+
+			// first thing, is there a shard and an idle worker?
+
+			// remember completed != shards could mean they're all
+			// assigned and are waiting on completion.
+
+			while(idleWorkers.size() > 0 && fileShards.size() > 0)
+			{
+					// okay, so we have an idle worker and a shard,
+					// lets put them to work!
+          WorkerStatus * ws = idleWorkers[0];  // always pull the 0th item
+					FileShard  shard = fileShards[0];    // always pull the 0th item
+
+					SendShardRPCToWorker(ws, shard);
+
+					idleWorkers.erase(idleWorkers.begin());
+					fileShards.erase(fileShards.begin());
+			}
+
+			std::cout << "Your code is hanging here because you took all the workers out of idle but didn't put them anywhere.\n";
+			std::cout << "Your RPC is being done synchronously.  You need to use pings to monitor for when a worker is done.\n";
+			std::cout << "You need to add a timeout to your synchronous calls as well, so if they timeout the whole app doesn't hang.\n";
+			
+
+	}
+
+
+	std::cout << "MASTER SENT EVERY SHARD TO WORKERS!!\n";
 
 
 
@@ -143,30 +195,29 @@ bool Master::run() {
 }
 
 
-void Master::SendShardRPCToWorker(std::string ipAndPort, FileShard &shard)
+void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard &shard)
 {
-		std::cout << "Sending shard to worker @ " << ipAndPort << "!\n";
+		std::cout << "Sending shard to worker @ " << ws->ipAndPort << "!\n";
 
-		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
 		grpc::CompletionQueue          completionQueue;
 		grpc::ClientContext 					 context;
 
 		masterworker::ShardInfo        request;
-		masterworker::ShardStartingMsg response;
+		masterworker::Ack              response;
 
 		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
-		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::ShardStartingMsg>>  responseReader;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
 
 		grpc::Status                   status;
 
-		channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+		channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
 
 		// write the name to the request
 		request.set_filename(shard.fileName);
 		request.set_offset(shard.offset);
 		request.set_shardsize(shard.shardSize);
-		request.set_outputdirectory(mr_spec->outputDir);
-		request.set_numberoffiles(mr_spec->numberOfOutputFiles);
+		request.set_shardid(shard.shardID);
 
 		// create a stub using the channel
 		mapStub = masterworker::MapperReducer::NewStub(channel);
@@ -176,7 +227,7 @@ void Master::SendShardRPCToWorker(std::string ipAndPort, FileShard &shard)
 		//   - then read it into a BidReply
 		//   - then let us know when the BidReply is available for reading via the completionQueue
 		responseReader =
-				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::ShardStartingMsg>>
+				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
 						(mapStub->AsyncMapShard(&context, request, &completionQueue));
 
 		std::cout << " - Calling finish\n";
@@ -210,11 +261,11 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 		grpc::CompletionQueue          completionQueue;
 		grpc::ClientContext 					 context;
 
-		masterworker::PingMsg          request;
-		masterworker::PingAck          response;
+		masterworker::EmptyMsg      request;
+		masterworker::Ack           response;
 
 		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
-		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::PingAck>>  responseReader;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
 
 		grpc::Status                   status;
 
@@ -227,7 +278,7 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 		//   - then read it into a BidReply
 		//   - then let us know when the BidReply is available for reading via the completionQueue
 		responseReader =
-				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::PingAck>>
+				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
 						(mapStub->AsyncPing(&context, request, &completionQueue));
 
 		std::cout << " - Calling finish\n";
@@ -258,7 +309,7 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 			  std::cout << " - Got okay!\n";
 				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
 				std::cout << " - status msg is " << (status.error_message()) << "\n";
-				std::cout << " - response is " << response.ack() << "\n";
+				std::cout << " - response is " << response.response() << "\n";
 		}
 		else
 		{
@@ -270,4 +321,59 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 				ws->state = MISSING;
 		}
+}
+
+
+
+void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
+{
+		std::string ipAndPort = ws->ipAndPort;
+		std::cout << "Sending setup info to worker @ " << ipAndPort << "!\n";
+
+		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+		grpc::CompletionQueue          completionQueue;
+		grpc::ClientContext 					 context;
+
+		masterworker::WorkerInfo       request;
+		masterworker::Ack              response;
+
+		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
+
+		grpc::Status                   status;
+
+		channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
+
+		// write the name to the request
+		request.set_workerid(i);
+		request.set_outputdirectory(mr_spec->outputDir);
+		request.set_numberofworkers(mr_spec->numberOfWorkers);
+		request.set_numberoffiles(mr_spec->numberOfOutputFiles);
+
+		// create a stub using the channel
+		mapStub = masterworker::MapperReducer::NewStub(channel);
+
+		// create an asynchronous response reader using the stub, request, and completion queue
+		//   - this will watch for the response in the background
+		//   - then read it into a BidReply
+		//   - then let us know when the BidReply is available for reading via the completionQueue
+		responseReader =
+				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
+						(mapStub->AsyncSetWorkerInfo(&context, request, &completionQueue));
+
+		std::cout << " - Calling finish\n";
+
+		responseReader->Finish(&response, &status, (void*)(long long int) 1);
+
+		void* got_tag;
+		bool ok = false;
+		completionQueue.Next(&got_tag, &ok);
+
+		if (ok && got_tag == (void*)1)
+		{
+			  std::cout << " - Got okay!\n";
+				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
+				std::cout << " - status msg is " << (status.error_message()) << "\n";
+		}
+
 }

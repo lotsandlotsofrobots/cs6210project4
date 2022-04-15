@@ -21,41 +21,42 @@ struct BaseMapperInternal {
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
 		bool Done();
 
-		void SetIntermediateOutputFile(std::string s) { intermediateOutputFile = s; }
-		std::string GetIntermediateOutputFile() { return intermediateOutputFile; }
+		std::vector<std::shared_ptr<std::ofstream>> outputFiles;
 
-		std::vector< std::pair<std::string, std::string> > mappedKeyValuePairs;
+		int          WorkerID;
+    std::string  OutputDirectory;
+    int          NumberOfWorkers;
+    int          NumberOfFiles;
 
-		std::string intermediateOutputFile;
-		int numOutputFiles;
+		std::vector<std::pair<std::string, std::string>> mappedKeyValuePairs;
+
+		void SetWorkerID(int i) { WorkerID = i; }
+    void SetOutputDirectory(std::string s) { OutputDirectory = s; }
+    void SetNumberOfWorkers(int i) { NumberOfWorkers = i; }
+    void SetNumberOfFiles(int i) { NumberOfFiles = i; }
+		bool Setup();
+
+		bool WriteShardToIntermediateFile();
+		bool DiscardShardResults();
 };
 
 
 /* CS6210_TASK Implement this function */
-inline BaseMapperInternal::BaseMapperInternal() {
-		intermediateOutputFile = "";
-		numOutputFiles = 0;
+inline BaseMapperInternal::BaseMapperInternal()
+{
+		WorkerID = 0;
+    OutputDirectory = "";
+    NumberOfWorkers = 0;
+    NumberOfFiles = 0;
 }
 
-
-/* CS6210_TASK Implement this function */
-inline void BaseMapperInternal::emit(const std::string& key, const std::string& val)
+inline bool BaseMapperInternal::Setup()
 {
-		std::cout << "Dummy emit by BaseMapperInternal: " << key << ", " << val << std::endl;
+		std::string intermediateOutputFile = OutputDirectory + "/mapper_" + std::to_string(WorkerID);
 
-		mappedKeyValuePairs.push_back(make_pair(key, val));
-}
-
-inline bool BaseMapperInternal::Done()
-{
-	  std::cout << "Base mapper DONE, writing to intermediate file.";
-
-		// have to use a shared ptr here because ofstream doesn't allow copy constructor
-		std::vector<std::shared_ptr<std::ofstream>> outputFiles;
-
-		for(int i = 0; i < numOutputFiles; i++)
+		for(int i = 0; i < NumberOfFiles; i++)
 		{
-			  std::shared_ptr<std::ofstream> outFile(new std::ofstream(intermediateOutputFile + "_" + std::to_string(i) + ".map"));
+				std::shared_ptr<std::ofstream> outFile(new std::ofstream(intermediateOutputFile + "_" + std::to_string(i) + ".map"));
 
 				if (!outFile->is_open())
 				{
@@ -63,30 +64,46 @@ inline bool BaseMapperInternal::Done()
 					return false;
 				}
 
-			  outputFiles.push_back(outFile);
+				outputFiles.push_back(outFile);
 		}
 
-		sort(mappedKeyValuePairs.begin(), mappedKeyValuePairs.end());
+		return true;
+}
 
-		// HASH KEYS TO DIFFERENT FILES !!!
-		// if n input files, dump to hash(key) % n
+
+/* CS6210_TASK Implement this function */
+inline void BaseMapperInternal::emit(const std::string& key, const std::string& val)
+{
+		//std::cout << "Dummy emit by BaseMapperInternal: " << key << ", " << val << std::endl;
+
+		mappedKeyValuePairs.push_back(make_pair(key, val));
+}
+
+
+
+inline bool BaseMapperInternal::WriteShardToIntermediateFile()
+{
+	  std::cout << "Base mapper writing to intermediate files.";
 
 		for (int i = 0; i < mappedKeyValuePairs.size(); i++)
 		{
 				std::string key =  mappedKeyValuePairs[i].first;
 				std::string value = mappedKeyValuePairs[i].second;
 
-				int whichFile = (std::hash<std::string>{}(key)) % numOutputFiles;
+				int whichFile = (std::hash<std::string>{}(key)) % NumberOfFiles;
 
 			  *(outputFiles[whichFile]) << key << " " << value << "\n";
 		}
-
 
 		return true;
 }
 
 
-
+inline bool BaseMapperInternal::DiscardShardResults()
+{
+	  mappedKeyValuePairs.clear();
+		return true;
+}
 
 
 
@@ -106,13 +123,41 @@ struct BaseReducerInternal {
 		void emit(const std::string& key, const std::string& val);
 
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
+
+		int          WorkerID;
+    std::string  OutputDirectory;
+    int          NumberOfWorkers;
+    int          NumberOfFiles;
+		int          ReduceSubset;
+
+		std::vector<std::ifstream> inputFiles;
+		std::ofstream outputFile;
+
+		void SetWorkerID(int i) { WorkerID = i; }
+    void SetOutputDirectory(std::string s) { OutputDirectory = s; }
+    void SetNumberOfWorkers(int i) { NumberOfWorkers = i; }
+    void SetNumberOfFiles(int i) { NumberOfFiles = i; }
+    void SetReduceSubset(int i) { ReduceSubset = i; }
+		void Setup();
+
+
 };
 
 
 /* CS6210_TASK Implement this function */
 inline BaseReducerInternal::BaseReducerInternal() {
-
+		WorkerID = 0;
+		OutputDirectory = "";
+		NumberOfWorkers = 0;
+		NumberOfFiles = 0;
+		ReduceSubset = 0;
 }
+
+inline void BaseReducerInternal::Setup()
+{
+		std::cout << "still have to do this later.\n";
+}
+
 
 
 /* CS6210_TASK Implement this function */
