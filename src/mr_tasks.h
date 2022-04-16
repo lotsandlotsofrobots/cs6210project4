@@ -96,12 +96,18 @@ inline bool BaseMapperInternal::WriteShardToIntermediateFile()
 
 				int whichFile = (std::hash<std::string>{}(key)) % NumberOfFiles;
 
-				std::cout << "  Writing (" << key << ", " << value << ") to file: " << std::to_string(whichFile) << "\n";
+				//std::cout << "  Writing (" << key << ", " << value << ") to file: " << std::to_string(whichFile) << "\n";
 
 				std::ofstream * f = outputFiles[whichFile];
 
 			  *f << key << " " << value << "\n";
-				f->flush();
+				//f->flush();
+		}
+
+		for(int i = 0; i < outputFiles.size(); i++)
+		{
+			  std::ofstream * f = outputFiles[i];
+			  f->flush();
 		}
 
 		mappedKeyValuePairs.clear();

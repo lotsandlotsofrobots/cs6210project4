@@ -9,7 +9,6 @@ DiscardShardResultsCallData::DiscardShardResultsCallData(MapperReducer::AsyncSer
     status_ = CREATE;
     worker = w;
 
-
     std::cout << "Requesting disard shard results.\n";
      // Invoke the serving logic right away.
     Proceed();

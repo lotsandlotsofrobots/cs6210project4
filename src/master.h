@@ -260,7 +260,7 @@ bool Master::run() {
 									{
 										  completedShards.push_back(shard);
 											shard->state = FILE_SHARD_STATE_COMPLETE;
-											ws->state = STATUS_CODE_IDLE;
+											ws->state = STATUS_CODE_WRITING_MAP;
 
 											SendWriteIntermediateToFile(ws);
 									}
@@ -282,6 +282,7 @@ bool Master::run() {
 							case STATUS_CODE_WRITING_MAP:
 							{
 								  std::cout << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
+									SendPingRPCToWorker(ws);
 									break;
 							}
 							case STATUS_CODE_MAP_WRITE_COMPLETE:
@@ -299,7 +300,7 @@ bool Master::run() {
 			*/
 
 			//std::this_thread::sleep_for(std::chrono::milliseconds(500)); // let everyone get started
-			std::this_thread::sleep_for(std::chrono::milliseconds(100)); // let everyone get started
+			std::this_thread::sleep_for(std::chrono::milliseconds(500)); // let everyone get started
 
 			// so now we have to go through and try to ping everyone.
 			// we should have zero idle workers because they should all be in the busy queue after that last loop

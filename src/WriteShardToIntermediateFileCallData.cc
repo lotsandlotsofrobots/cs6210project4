@@ -38,11 +38,12 @@ void WriteShardToIntermediateFileCallData::Proceed()
 
 				std::cout << "Responding to write shard to intermediate file!\n";
 
-        worker->WriteShardToIntermediateFile();
-
 				status_ = FINISH;
 				reply_.set_response(1);
 				responder_.Finish(reply_,  grpc::Status::OK, this);
+
+        worker->WriteShardToIntermediateFile();
+
 		}
 		else
 		{
