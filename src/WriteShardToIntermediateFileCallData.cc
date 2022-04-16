@@ -9,7 +9,6 @@ WriteShardToIntermediateFileCallData::WriteShardToIntermediateFileCallData(Mappe
     status_ = CREATE;
     worker = w;
 
-
     std::cout << "Requesting write shard to intermediate file.\n";
      // Invoke the serving logic right away.
     Proceed();
@@ -34,6 +33,7 @@ void WriteShardToIntermediateFileCallData::Proceed()
 				// Spawn a new CallData instance to serve new clients while we process
 				// the one for this CallData. The instance will deallocate itself as
 				// part of its FINISH state.
+        worker->SetStatusCode(STATUS_CODE_WRITING_MAP);
 				new WriteShardToIntermediateFileCallData(service_, cq_, worker);
 
 				std::cout << "Responding to write shard to intermediate file!\n";
@@ -48,6 +48,8 @@ void WriteShardToIntermediateFileCallData::Proceed()
 		{
 				GPR_ASSERT(status_ == FINISH);
 				// Once in the FINISH state, deallocate ourselves (CallData).
+        worker->SetStatusCode(STATUS_CODE_MAP_WRITE_COMPLETE);
+
 				delete this;
 		}
 

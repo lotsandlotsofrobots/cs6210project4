@@ -1,4 +1,5 @@
 #include "PingCallData.h"
+#include "worker.h"
 
 PingCallData::PingCallData(MapperReducer::AsyncService* service, ServerCompletionQueue* cq, Worker * w)
 		: responder_(&ctx_)
@@ -38,7 +39,7 @@ void PingCallData::Proceed()
 				std::cout << "Responding to ping!\n";
 
 				status_ = FINISH;
-				reply_.set_response(1);
+				reply_.set_response(worker->GetStatusCode());
 				responder_.Finish(reply_,  grpc::Status::OK, this);
 		}
 		else

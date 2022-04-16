@@ -18,6 +18,10 @@ struct ShardPart {
 
 };
 
+#define FILE_SHARD_STATE_UNASSIGNED 1
+#define FILE_SHARD_STATE_ASSIGNED   2
+#define FILE_SHARD_STATE_COMPLETE   3
+
 /* Kinda done - needs to be vector of shardpieces - CS6210_TASK: Create your own data structure here, where you can hold information about file splits,
      that your master would use for its own bookkeeping and to convey the tasks to the workers for mapping */
 struct FileShard {
@@ -25,6 +29,9 @@ struct FileShard {
 	std::string fileName;
 	int   offset;     // this will be an offset into an mmapped file
 	int   shardSize;  // how many bytes to read
+	std::vector<int>  workersThatAttemptedThis;
+	int   state;
+	int   completed;
 };
 
 
@@ -95,6 +102,7 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 								fs.fileName = filePath;
 								fs.offset = shardStart;
 								fs.shardSize  = candidateShardEnd - shardStart;
+								fs.state = FILE_SHARD_STATE_UNASSIGNED;
 								fileShards.push_back(fs);
 
 								// break out so that we move to the next file
@@ -116,6 +124,7 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 								fs.fileName = filePath;
 								fs.offset = shardStart;
 								fs.shardSize = candidateShardEnd - shardStart;
+								fs.state = FILE_SHARD_STATE_UNASSIGNED;
 								fileShards.push_back(fs);
 
 								// increment everything so we start this process again
@@ -133,6 +142,7 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 										fs.fileName = filePath;
 										fs.offset = shardStart;
 										fs.shardSize = fileSize - shardStart;
+										fs.state = FILE_SHARD_STATE_UNASSIGNED;
 										fileShards.push_back(fs);
 
 										break;

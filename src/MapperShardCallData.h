@@ -10,7 +10,7 @@ public:
 		void StartWorkerMapThread();
 		FileShard GetFileShard();
 		virtual void Proceed();
-    void Finish();
+    //void Finish();
 
 	private:
 			masterworker::ShardInfo request_;

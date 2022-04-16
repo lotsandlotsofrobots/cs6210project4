@@ -21,7 +21,8 @@ struct BaseMapperInternal {
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
 		bool Done();
 
-		std::vector<std::shared_ptr<std::ofstream>> outputFiles;
+		std::vector<std::ofstream*> outputFiles;
+		//std::vector<std::shared_ptr<std::ofstream>> outputFiles;
 
 		int          WorkerID;
     std::string  OutputDirectory;
@@ -52,16 +53,19 @@ inline BaseMapperInternal::BaseMapperInternal()
 
 inline bool BaseMapperInternal::Setup()
 {
+		std::cout << "Setting up:\n" << "\n";
+
 		std::string intermediateOutputFile = OutputDirectory + "/mapper_" + std::to_string(WorkerID);
 
 		for(int i = 0; i < NumberOfFiles; i++)
 		{
-				std::shared_ptr<std::ofstream> outFile(new std::ofstream(intermediateOutputFile + "_" + std::to_string(i) + ".map"));
+				//std::shared_ptr<std::ofstream> outFile(new std::ofstream(intermediateOutputFile + "_" + std::to_string(i) + ".map"));
+				std::ofstream * outFile = new std::ofstream(intermediateOutputFile + "_" + std::to_string(i) + ".map");
 
 				if (!outFile->is_open())
 				{
-					std::cout << "Could not open output file for writing!\n";
-					return false;
+				  	std::cout << "Could not open output file for writing!\n";
+				  	return false;
 				}
 
 				outputFiles.push_back(outFile);
@@ -83,7 +87,7 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 
 inline bool BaseMapperInternal::WriteShardToIntermediateFile()
 {
-	  std::cout << "Base mapper writing to intermediate files.";
+	  std::cout << "Base mapper writing to intermediate files:";
 
 		for (int i = 0; i < mappedKeyValuePairs.size(); i++)
 		{
@@ -92,8 +96,15 @@ inline bool BaseMapperInternal::WriteShardToIntermediateFile()
 
 				int whichFile = (std::hash<std::string>{}(key)) % NumberOfFiles;
 
-			  *(outputFiles[whichFile]) << key << " " << value << "\n";
+				std::cout << "  Writing (" << key << ", " << value << ") to file: " << std::to_string(whichFile) << "\n";
+
+				std::ofstream * f = outputFiles[whichFile];
+
+			  *f << key << " " << value << "\n";
+				f->flush();
 		}
+
+		mappedKeyValuePairs.clear();
 
 		return true;
 }

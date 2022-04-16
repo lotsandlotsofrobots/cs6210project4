@@ -26,12 +26,15 @@ public:
 		void Map(std::string s);
     void Reduce();
 
-		int GetWorkerID();
+		virtual int GetWorkerID();
+		virtual void SetStatusCode(int i);
 
 protected:
 		MapperReducer::AsyncService* service_;
 		ServerCompletionQueue* cq_;
 		ServerContext ctx_;
+		int statusCode;
+
 
 		CallStatus status_;  // The current serving state.
 		Worker * worker;

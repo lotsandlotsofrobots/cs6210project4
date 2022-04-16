@@ -6,6 +6,7 @@ Worker::Worker(std::string ip_addr_port) {
 		ipAndPort = ip_addr_port;
 		mapper = get_mapper_from_task_factory("cs6210");
     reducer = get_reducer_from_task_factory("cs6210");
+		statusCode = 0;
 }
 
 
@@ -75,3 +76,8 @@ void Worker::SetupBaseMapperImpl(std::string outputDir)
 {
 
 }
+/*
+void Worker::SetStatusCode(int i)
+{
+    worker->SetStatusCode(i);
+}*/

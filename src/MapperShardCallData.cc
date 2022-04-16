@@ -22,7 +22,9 @@ void MapDataShard(MapperShardCallData * callData)
 		if (fileShardArg.offset + fileShardArg.shardSize > fileLength)
 		{
 				std::cout << "offset + size > length!\n";
-			  // TODO handle error here.
+				callData->SetStatusCode(STATUS_CODE_FAILED | STATUS_CODE_INVALID_ARGS);
+				//callData->SetStatusCode(grpc::StatusCode::OUT_OF_RANGE);
+				return;
 		}
 
 		shard.seekg(fileShardArg.offset);
@@ -61,6 +63,8 @@ void MapDataShard(MapperShardCallData * callData)
 				std::cout << "Size:     " << std::to_string(fileShardArg.shardSize) << "\n";
 				std::cout << "Position: " << std::to_string(bytes) << "\n";
 
+				callData->SetStatusCode(STATUS_CODE_FAILED | STATUS_CODE_SHARD_MATH_ERROR);
+
 		    // todo figure out what to do with this
 		}
 		else
@@ -70,7 +74,7 @@ void MapDataShard(MapperShardCallData * callData)
 
 		shard.close();
 
-		callData->Finish();
+		callData->SetStatusCode(STATUS_CODE_COMPLETE);
 }
 
 
@@ -90,6 +94,7 @@ MapperShardCallData::MapperShardCallData(MapperReducer::AsyncService* service, S
 		 cq_ = cq;
 		 status_  = CREATE;
 		 worker = w;
+		 statusCode = grpc::StatusCode::OK;
 
 		 // Invoke the serving logic right away.
 		Proceed();
@@ -106,6 +111,7 @@ FileShard MapperShardCallData::GetFileShard()
 		fileShard.fileName = request_.filename();
 		fileShard.offset = request_.offset();
 		fileShard.shardSize = request_.shardsize();
+		fileShard.shardID = request_.shardid();
 
 		return fileShard;
 }
@@ -130,9 +136,14 @@ void MapperShardCallData::Proceed()
 				// Spawn a new CallData instance to serve new clients while we process
 				// the one for this CallData. The instance will deallocate itself as
 				// part of its FINISH state.
+				worker->SetStatusCode( STATUS_CODE_WORKING );
 				std::cout << "Got it, now creating a new mapshardcalldata and startworkmapthread\n\n";
 				new MapperShardCallData(service_, cq_, worker);
 				StartWorkerMapThread();
+
+				status_ = FINISH;
+
+				responder_.Finish(reply_, grpc::Status::OK, this);
 		}
 		else
 		{
@@ -147,9 +158,11 @@ void MapperShardCallData::Proceed()
 		}
 }
 
+/*
 void MapperShardCallData::Finish()
 {
 		status_ = FINISH;
-		
+
 		responder_.Finish(reply_, grpc::Status::OK, this);
 }
+*/

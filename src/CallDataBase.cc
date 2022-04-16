@@ -21,3 +21,8 @@ int CallDataBase::GetWorkerID()
 {
 		return worker->GetWorkerID();
 }
+
+void CallDataBase::SetStatusCode(int i)
+{
+	  worker->SetStatusCode(i);
+}

@@ -31,6 +31,21 @@ using masterworker::MapperReducer;
 **
 ******************************************************************************/
 
+// user first byte for overall worker state
+#define STATUS_CODE_IDLE                 0x00000000
+#define STATUS_CODE_WORKING              0x00000001
+#define STATUS_CODE_COMPLETE             0x00000002
+#define STATUS_CODE_FAILED               0x00000004
+#define STATUS_CODE_MISSING              0x00000008  // only the master sets this, a worker doesn't know it's missing
+#define STATUS_CODE_WRITING_MAP          0x00000010
+#define STATUS_CODE_MAP_WRITE_COMPLETE   0x00000020
+
+// next three bytes for information
+#define STATUS_CODE_INVALID_ARGS       0x00000100
+#define STATUS_CODE_FILE_ERROR         0x00000200
+#define STATUS_CODE_SHARD_MATH_ERROR   0x00000400
+
+
 
 /* CS6210_TASK: Handle all the task a Worker is supposed to do.
 	This is a big task for this project, will test your understanding of map reduce */
@@ -45,8 +60,8 @@ class Worker {
 
 		void SetupBaseMapperImpl(std::string outputFile);
 
-		void SetWorkerID(int i)                { mapper->impl_->SetWorkerID(i);         reducer->impl_->SetWorkerID(i);  workerID = i; }
-		int  GetWorkerID()									   { return workerID; }
+		int  GetWorkerID()                     { return workerID; }
+		void SetWorkerID(int i)                { mapper->impl_->SetWorkerID(i);         reducer->impl_->SetWorkerID(i); }
     void SetOutputDirectory(std::string s) { mapper->impl_->SetOutputDirectory(s);  reducer->impl_->SetOutputDirectory(s); }
     void SetNumberOfWorkers(int i)         { mapper->impl_->SetNumberOfWorkers(i);  reducer->impl_->SetNumberOfWorkers(i); }
     void SetNumberOfFiles(int i)           { mapper->impl_->SetNumberOfFiles(i);    reducer->impl_->SetNumberOfFiles(i); }
@@ -58,10 +73,14 @@ class Worker {
 		void WriteShardToIntermediateFile()    { mapper->impl_->WriteShardToIntermediateFile(); }
 		void DiscardShardResults()             { mapper->impl_->DiscardShardResults(); }
 
+		void SetStatusCode(int i)              { statusCode = i; }
+		int GetStatusCode()                    { return statusCode; }
+
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
 
 		std::string ipAndPort;
+		int statusCode;
 		int workerID;
 
 		std::unique_ptr<grpc::ServerCompletionQueue>  completionQueue;
