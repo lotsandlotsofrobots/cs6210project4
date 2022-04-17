@@ -3,10 +3,13 @@
 /* CS6210_TASK: ip_addr_port is the only information you get when started.
 	You can populate your other class data members here if you want */
 Worker::Worker(std::string ip_addr_port) {
+
 		ipAndPort = ip_addr_port;
-		mapper = get_mapper_from_task_factory("cs6210");
-    reducer = get_reducer_from_task_factory("cs6210");
-		statusCode = 0;
+
+		/*statusCode = 0;
+		*/
+
+
 }
 
 
@@ -18,6 +21,26 @@ Worker::Worker(std::string ip_addr_port) {
 
 bool Worker::run()
 {
+		std::shared_ptr<BaseMapper> mapper = get_mapper_from_task_factory("cs6210");
+		std::shared_ptr<BaseReducer> reducer = get_reducer_from_task_factory("cs6210");
+
+		SyncWorker syncWorker(ipAndPort, mapper, mapper->impl_, reducer, reducer->impl_);
+
+		ServerBuilder builder;
+
+		builder.AddListeningPort(ipAndPort, grpc::InsecureServerCredentials());
+		builder.RegisterService(&syncWorker);
+
+		std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+
+		server->Wait();
+
+
+
+
+/*
+
+
 		builder.AddListeningPort(ipAndPort, InsecureServerCredentials());
 		builder.RegisterService(&asyncService);
 
@@ -48,7 +71,7 @@ bool Worker::run()
 
 		    static_cast<CallDataBase*>(tag)->Proceed();
 	  }
-
+*/
 
 /*
 	std::cout << "worker.run(), I 'm not ready yet" <<std::endl;
@@ -65,7 +88,7 @@ bool Worker::run()
 	return true;
 }
 
-
+/*
 void Worker::Map(std::string s)
 {
 	  mapper->map(s);
@@ -76,6 +99,7 @@ void Worker::SetupBaseMapperImpl(std::string outputDir)
 {
 
 }
+*/
 /*
 void Worker::SetStatusCode(int i)
 {

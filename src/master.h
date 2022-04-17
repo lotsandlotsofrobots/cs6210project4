@@ -47,6 +47,9 @@ class Master {
 			FileShard *         assignedShard;
 			unsigned long long  lastPingTime;
 			unsigned long long  assignedTime;
+
+			std::shared_ptr<grpc::Channel> channel;
+			std::unique_ptr<MapperReducer::Stub> stub;
 	};
 
 
@@ -69,8 +72,10 @@ class Master {
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
 
+		std::unique_ptr<MapperReducer::Stub> stub_;
+		std::shared_ptr<grpc::Channel> channel;
+
 		const MapReduceSpec * mr_spec;
-		//const std::vector<FileShard> fileShards;
 		std::vector<FileShard> fileShards;
 };
 
@@ -80,6 +85,7 @@ class Master {
 Master::Master(const MapReduceSpec& mr_spec, const std::vector<FileShard>& file_shards)
 {
 		this->mr_spec = &mr_spec;
+
 
 		for(int i = 0; i < file_shards.size(); i++)
 		{
@@ -155,6 +161,8 @@ bool Master::run() {
 			ws->assignedShard = NULL;
 			ws->lastPingTime = 0;
 			ws->assignedTime = 0;
+ 		  ws->channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
+ 		  ws->stub = (MapperReducer::NewStub(ws->channel));
 
 			SendPingRPCToWorker(ws);
 
@@ -193,30 +201,6 @@ bool Master::run() {
 	int numberOfShards = fileShards.size();
 	while (completedShards.size() != numberOfShards)
 	{
-			// figure out what to do with dead workers here
-			// what if one never starts?
-
-			// first thing, is there a shard and an idle worker?
-
-			// remember completed != shards could mean they're all
-			// assigned and are waiting on completion.
-
-			/*while(idleWorkers.size() > 0 && fileShards.size() > 0)
-			{
-					// okay, so we have an idle worker and a shard,
-					// lets put them to work!
-          WorkerStatus * ws = idleWorkers[0];  // always pull the 0th item
-					FileShard  shard = fileShards[0];    // always pull the 0th item
-
-					SendShardRPCToWorker(ws, shard);
-
-					idleWorkers.erase(idleWorkers.begin());
-					fileShards.erase(fileShards.begin());
-
-					busyWorkers.push_back(ws);
-					assignedShards.push_back(shard);
-			}*/
-
 			for (int i = 0; i < workers.size(); i++)
 			{
 					WorkerStatus * ws = workers[i];
@@ -410,6 +394,26 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 
 void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 {
+
+	masterworker::EmptyMsg request;
+	masterworker::Ack        reply;
+
+	grpc::ClientContext context;
+
+	grpc::Status status = ws->stub->Ping(&context, request, &reply);
+
+	if (status.ok())
+	{
+			return;
+	}
+	else
+	{
+			std::cout << " - SendWorkerInfoToWorker not okay!\n";
+			std::cout << " - status is " << (status.error_code()) << "\n";
+			std::cout << " - status msg is " << (status.error_message()) << "\n";
+	}
+
+	/*
 		if (ws == NULL)
 		{
 	      std::cout << "ERROR:  Could not send ping to worker because ws was null!";
@@ -453,6 +457,7 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 		void* got_tag = 0;
 		bool ok = false;
+*/
 
 /*
 		gpr_timespec deadline;
@@ -462,7 +467,7 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 		grpc::CompletionQueue::NextStatus pingStatus = completionQueue.AsyncNext(&got_tag, &ok, deadline);
 */
-
+/*
 		grpc::CompletionQueue::NextStatus pingStatus = completionQueue.AsyncNext(&got_tag, &ok, std::chrono::system_clock::now() + std::chrono::milliseconds(1000));
 
 		// regardless of response, record the time we pinged it.
@@ -494,12 +499,37 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 				ws->state = STATUS_CODE_MISSING;
 		}
+		*/
 }
 
 
 
 void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 {
+		masterworker::WorkerInfo request;
+		masterworker::Ack        reply;
+
+		grpc::ClientContext context;
+
+		request.set_workerid(i);
+		request.set_outputdirectory(mr_spec->outputDir);
+		request.set_numberofworkers(mr_spec->numberOfWorkers);
+		request.set_numberoffiles(mr_spec->numberOfOutputFiles);
+
+		grpc::Status status = ws->stub->SetWorkerInfo(&context, request, &reply);
+
+		if (status.ok())
+		{
+		  	return;
+		}
+		else
+		{
+		  	std::cout << " - SendWorkerInfoToWorker not okay!\n";
+		  	std::cout << " - status is " << (status.error_code()) << "\n";
+		  	std::cout << " - status msg is " << (status.error_message()) << "\n";
+		}
+
+	/*
 		std::string ipAndPort = ws->ipAndPort;
 		std::cout << "Sending setup info to worker @ " << ipAndPort << "!\n";
 
@@ -557,6 +587,7 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
 				std::cout << " - status msg is " << (status.error_message()) << "\n";
 		}
+*/
 
 }
 
@@ -566,6 +597,7 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 
 void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 {
+	/*
 		std::string ipAndPort = ws->ipAndPort;
 		std::cout << "Sending write intermediate files to worker @ " << ipAndPort << "!\n";
 
@@ -614,12 +646,14 @@ void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
 				std::cout << " - status msg is " << (status.error_message()) << "\n";
 		}
+	*/
 }
 
 
 
 void Master::SendDropIntermediateToFile(WorkerStatus * ws)
 {
+	/*
 		std::string ipAndPort = ws->ipAndPort;
 		std::cout << "Sending dump intermediate files to worker @ " << ipAndPort << "!\n";
 
@@ -670,4 +704,5 @@ void Master::SendDropIntermediateToFile(WorkerStatus * ws)
 				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
 				std::cout << " - status msg is " << (status.error_message()) << "\n";
 		}
+	*/
 }
