@@ -54,10 +54,6 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 				std::cout << "opened " << filePath << ", fd: " << std::to_string(fd) << "\n";
 				std::cout << "Desired shard size: " << std::to_string(desiredShardSize) << "\n";
 
-				std::string dummy;
-				std::cin.ignore();
-				getline(std::cin, dummy);
-
 				unsigned long long fileSize = lseek(fd, 0, SEEK_END);
 
 				void * fileMMAP = mmap(NULL, fileSize, PROT_READ, MAP_SHARED, fd, 0);

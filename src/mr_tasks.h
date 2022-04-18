@@ -88,7 +88,7 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 
 inline bool BaseMapperInternal::WriteShardToIntermediateFile()
 {
-	  std::cout << "Base mapper writing to intermediate files:";
+	  //std::cout << "Base mapper writing to intermediate files:";
 
 		for (int i = 0; i < mappedKeyValuePairs.size(); i++)
 		{
@@ -174,7 +174,7 @@ inline void BaseReducerInternal::Setup()
 {
 		std::cout << "Setting up:\n" << "\n";
 
-		outputFile = std::ofstream(OutputDirectory + "/reduce_" + ".out");
+		outputFile = std::ofstream(OutputDirectory + "/reduce_" + std::to_string(WorkerID) + ".out");
 
 }
 
@@ -183,23 +183,28 @@ inline void BaseReducerInternal::Setup()
 /* CS6210_TASK Implement this function */
 inline void BaseReducerInternal::emit(const std::string& key, const std::string& val) {
 
-		if ( reduceKeyValuePairs.count(key) == 0 )
-		{
+		/*if ( reduceKeyValuePairs.count(key) == 0 )
+		{*/
 			  reduceKeyValuePairs[key] = val;
-		}
+		//}
 
 		//std::cout << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
+
+		//std::cout << "Emit called (" << key << ", " << val << ")\n";
 }
 
 
 inline void BaseReducerInternal::WriteReduce()
 {
+		std::cout << "Write reduce called.\n";
+
 		for (std::map<std::string, std::string>::iterator i = reduceKeyValuePairs.begin(); i != reduceKeyValuePairs.end(); i++)
 		{
-			  outputFile << i->first << " " << i->second;
+			  outputFile << i->first << " " << i->second << "\n";
 		}
 
 		outputFile.flush();
+		reduceKeyValuePairs.clear();
 }
 
 inline void BaseReducerInternal::DiscardReduce()

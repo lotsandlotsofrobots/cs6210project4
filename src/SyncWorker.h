@@ -3,6 +3,7 @@
 #include "masterworker.grpc.pb.h"
 #include <grpcpp/grpcpp.h>
 
+#include <string>
 #include <thread>
 
 #include <mr_task_factory.h>
@@ -22,6 +23,7 @@ using masterworker::EmptyMsg;
 using masterworker::Ack;
 using masterworker::WorkerInfo;
 using masterworker::ShardInfo;
+using masterworker::ReduceSubset;
 
 class SyncWorker final : public MapperReducer::Service {
 
@@ -41,30 +43,44 @@ public:
     Status MapShard( ServerContext * context, const ShardInfo* request, Ack * reply) override;
     Status WriteShardToIntermediateFile( ServerContext * context, const EmptyMsg* request, Ack * reply) override;
     Status DiscardShardResults( ServerContext * context, const EmptyMsg* request, Ack * reply) override;
+    Status Reduce(ServerContext * context, const ReduceSubset* request, Ack * reply);
+
+    Status WriteReduceFile(ServerContext * context, const EmptyMsg* request, Ack * reply);
+    Status DiscardReduceResults(ServerContext * context, const EmptyMsg* request, Ack * reply);
 
 // Auxilary:
+    //void SetupMapper() { mapperImpl->Setup(); }
+    //void SetupMapper() { mapperImpl->Setup(); }
+
     void EnqueShard(FileShard fileShard);
-    void SetupMapper() { mapperImpl->Setup(); }
-    //void Map(std::string s);
     void DoShardMapping();
+    void DoReducing();
+
     BaseMapperInternal* GetMapperImpl() { return mapperImpl; }
+    BaseReducerInternal* GetReducerImpl() { return reducerImpl; }
+
+
 
     void run();
 
     void SetStatusCode(int i)              { statusCode = i; }
 		int GetStatusCode()                    { return statusCode; }
 
-    void SetWorkerID(int i)                { workerID = i; mapperImpl->SetWorkerID(i);         reducerImpl->SetWorkerID(i); }
+    void SetWorkerID(int i)                { mapperImpl->SetWorkerID(i);         reducerImpl->SetWorkerID(i);        workerID = i; }
     int  GetWorkerID()                     { return workerID; }
-    void SetOutputDirectory(std::string s) { mapperImpl->SetOutputDirectory(s);  reducerImpl->SetOutputDirectory(s); }
-    void SetNumberOfWorkers(int i)         { mapperImpl->SetNumberOfWorkers(i);  reducerImpl->SetNumberOfWorkers(i); }
+
+    void SetOutputDirectory(std::string s) { mapperImpl->SetOutputDirectory(s);  reducerImpl->SetOutputDirectory(s); outputDirectory = s; }
+    void SetNumberOfWorkers(int i)         { mapperImpl->SetNumberOfWorkers(i);  reducerImpl->SetNumberOfWorkers(i); numberOfWorkers = i;}
     void SetNumberOfFiles(int i)           { mapperImpl->SetNumberOfFiles(i);    reducerImpl->SetNumberOfFiles(i); }
 
 protected:
     std::thread t;
     FileShard fileShardArg;
+    int reduceSubset;
     int statusCode;
     int workerID;
+    int numberOfWorkers;
+    std::string outputDirectory;
 
     std::string ipAndPort;
     BaseMapperInternal* mapperImpl;

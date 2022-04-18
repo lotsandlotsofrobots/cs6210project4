@@ -71,7 +71,7 @@ void SyncWorker::run()
 
 void SyncWorker::DoShardMapping()
 {
-    std::cout << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
+    //std::cout << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
 
     std::ifstream shard(fileShardArg.fileName);
 
@@ -117,13 +117,15 @@ void SyncWorker::DoShardMapping()
     }
     else
     {
-        std::cout << "Done with file shard " << std::to_string(fileShardArg.shardID) << "\n";
+        //std::cout << "Done with file shard " << std::to_string(fileShardArg.shardID) << "\n";
     }
 
     shard.close();
 
     SetStatusCode(STATUS_CODE_COMPLETE);
 }
+
+
 
 
 
@@ -140,7 +142,8 @@ Status SyncWorker::SetWorkerInfo( ServerContext * context, const WorkerInfo* req
     SetOutputDirectory(request->outputdirectory());
     SetNumberOfWorkers(request->numberofworkers());
     SetNumberOfFiles(request->numberoffiles());
-    SetupMapper();
+    mapperImpl->Setup();
+    reducerImpl->Setup();
 
     t = std::thread(MonitorAndDoWork, this);
 
@@ -157,7 +160,7 @@ Status SyncWorker::MapShard( ServerContext * context, const ShardInfo* request, 
     fileShardArg.shardID = request->shardid();
 
     //EnqueShard(fileShard);
-    SetStatusCode( STATUS_CODE_WORKING );
+    SetStatusCode( STATUS_CODE_MAP_WORKING );
 
     reply->set_response(1);
 
@@ -193,20 +196,62 @@ Status SyncWorker::DiscardShardResults( ServerContext * context, const EmptyMsg*
 
 
 
-void DoReducing()
+void SyncWorker::DoReducing()
 {
 
+    std::vector<std::ifstream> shardFiles;
+
+    std::map<std::string, std::vector<std::string>> keyValuePairs;
+
+    for ( int i = 0; i < numberOfWorkers; i++ )
+    {
+        std::string fileName = "intermediate/mapper_" + std::to_string(i) + "_" + std::to_string(reduceSubset) + ".map";
+        std::ifstream shardFile(fileName);
+
+        if (!shardFile.is_open())
+        {
+            std::cout << "Couldn't open " << fileName << "\n";
+            continue;
+        }
+
+        std::string line;
+
+        std::string delimiter = " ";
+        while(getline(shardFile, line))
+        {
+            std::string key   = line.substr(0, line.find(delimiter));
+            std::string value = line.substr(line.find(delimiter) + 1, line.length());
+
+            keyValuePairs[key].push_back(value);
+        }
+    }
+
+    std::cout << "keyvaluepairs has " << keyValuePairs.size() << "\n";
+    std::cout << "Done reading all files, time to reduce.\n";
+
+    for (std::map<std::string, std::vector<std::string>>::iterator i = keyValuePairs.begin(); i != keyValuePairs.end(); i++)
+    {
+        reducer->reduce(i->first, i->second);
+    }
+
+    SetStatusCode( STATUS_CODE_COMPLETE );
 }
 
-Status SyncWorker::Reduce(ServerContext * context, const ShardInfo* request, Ack * reply)
+Status SyncWorker::Reduce(ServerContext * context, const ReduceSubset* request, Ack * reply)
 {
+    SetStatusCode( STATUS_CODE_REDUCE_WORKING );
+    reduceSubset = request->subset();
 
+    reply->set_response(1);
+    return Status::OK;
 }
 
 
-Status SyncWorker::WriteReduce(ServerContext * context, const EmptyMsg* request, Ack * reply)
+Status SyncWorker::WriteReduceFile(ServerContext * context, const EmptyMsg* request, Ack * reply)
 {
-    SetStatusCode( STATUS_CODE_WRITING_MAP );
+    std::cout << "WriteReducetoFile RPC recevied" << "\n";
+
+    SetStatusCode( STATUS_CODE_WRITING_REDUCE );
 
     // let thread pick up the flag and write everything
 
@@ -215,9 +260,11 @@ Status SyncWorker::WriteReduce(ServerContext * context, const EmptyMsg* request,
 }
 
 
-Status SyncWorker::DiscardReduce(ServerContext * context, const EmptyMsg* request, Ack * reply)
+Status SyncWorker::DiscardReduceResults(ServerContext * context, const EmptyMsg* request, Ack * reply)
 {
-    SetStatusCode(STATUS_CODE_MAP_DUMP_RESULTS);
+    std::cout << "DiscardReduceResults RPC recevied" << "\n";
+
+    SetStatusCode(STATUS_CODE_REDUCE_DUMP_RESULTS);
 
     reply->set_response(1);
     return Status::OK;

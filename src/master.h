@@ -205,13 +205,13 @@ bool Master::run()
 						{
 							  case STATUS_CODE_IDLE:
 								{
-										std::cout << "Worker " << std::to_string(i) << " is IDLE\n";
+										//std::cout << "Worker " << std::to_string(i) << " is IDLE\n";
 										TryToAssignWorkToWorker(ws);
 										break;
 								}
-								case STATUS_CODE_WORKING:
+								case STATUS_CODE_MAP_WORKING:
 								{
-										std::cout << "Worker " << std::to_string(i) << " is WORKING\n";
+										//std::cout << "Worker " << std::to_string(i) << " is WORKING\n";
 										SendPingRPCToWorker(ws);
 
 										if (ws->slowWorkerFlags == WORKER_FLAGS_SLOW)
@@ -231,7 +231,7 @@ bool Master::run()
 								{
 									  // complicated case...  what do we do with this?
 										// reassign the shard, but NOT to this worker (?)
-										std::cout << "Worker " << std::to_string(i) << " is FAILED\n";
+										//std::cout << "Worker " << std::to_string(i) << " is FAILED\n";
 
 										ws->assignedShard->workersThatAttemptedThis.push_back(ws->workerID);
 										ws->state = STATUS_CODE_IDLE;
@@ -242,9 +242,9 @@ bool Master::run()
 								}
 								case STATUS_CODE_COMPLETE:
 								{
-										std::cout << "Worker is completed.\n";
+										//std::cout << "Worker is completed.\n";
 										FileShard * shard = ws->assignedShard;
-										std::cout << "Worker " << std::to_string(i) << ", (" << std::to_string(shard->shardID) << ") is COMPLETE\n";
+										//std::cout << "Worker " << std::to_string(i) << ", (" << std::to_string(shard->shardID) << ") is COMPLETE\n";
 
 
 										if (std::find(completedShards.begin(),
@@ -267,7 +267,7 @@ bool Master::run()
 								}
 								case STATUS_CODE_MISSING:
 								{
-										std::cout << "Worker " << std::to_string(i) << " is MISSING\n";
+										//std::cout << "Worker " << std::to_string(i) << " is MISSING\n";
 
 										// reassign it's work
 										FileShard * shard = ws->assignedShard;
@@ -279,13 +279,13 @@ bool Master::run()
 								}
 								case STATUS_CODE_WRITING_MAP:
 								{
-									  std::cout << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
+									  //std::cout << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
 										SendPingRPCToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_MAP_WRITE_COMPLETE:
 								{
-										std::cout << "Done writing worker map for worker " << std::to_string(i) << "\n";
+										//std::cout << "Done writing worker map for worker " << std::to_string(i) << "\n";
 										ws->state = STATUS_CODE_IDLE;
 										break;
 								}
@@ -333,13 +333,13 @@ bool Master::run()
 						{
 								case STATUS_CODE_IDLE:
 								{
-										std::cout << "Worker " << std::to_string(i) << " is IDLE\n";
+										//std::cout << "Worker " << std::to_string(i) << " is IDLE\n";
 										TryToAssignReduceToWorker(ws);
 										break;
 								}
-								case STATUS_CODE_WORKING:
+								case STATUS_CODE_REDUCE_WORKING:
 								{
-										std::cout << "Worker " << std::to_string(i) << " is WORKING\n";
+										//std::cout << "Worker " << std::to_string(i) << " is WORKING\n";
 										SendPingRPCToWorker(ws);
 
 										if (ws->slowWorkerFlags == WORKER_FLAGS_SLOW)
@@ -359,7 +359,7 @@ bool Master::run()
 								{
 										// complicated case...  what do we do with this?
 										// reassign the shard, but NOT to this worker (?)
-										std::cout << "Worker " << std::to_string(i) << " is FAILED\n";
+										//std::cout << "Worker " << std::to_string(i) << " is FAILED\n";
 
 										ws->assignedReduce->workersThatAttemptedThis.push_back(ws->workerID);
 										ws->state = STATUS_CODE_IDLE;
@@ -370,9 +370,9 @@ bool Master::run()
 								}
 								case STATUS_CODE_COMPLETE:
 								{
-										std::cout << "Worker is completed.\n";
+										//std::cout << "Worker is completed.\n";
 										ReduceTask * rt = ws->assignedReduce;
-										std::cout << "Worker " << std::to_string(i) << ", (" << std::to_string(rt->reduceID) << ") is COMPLETE\n";
+										//std::cout << "Worker " << std::to_string(i) << ", (" << std::to_string(rt->reduceID) << ") is REDUCE COMPLETE\n";
 
 
 										if (std::find(completedReduceTasks.begin(),
@@ -395,7 +395,7 @@ bool Master::run()
 								}
 								case STATUS_CODE_MISSING:
 								{
-										std::cout << "Worker " << std::to_string(i) << " is MISSING\n";
+										//std::cout << "Worker " << std::to_string(i) << " is MISSING\n";
 
 										// reassign it's work
 										ReduceTask * rt = ws->assignedReduce;
@@ -407,13 +407,13 @@ bool Master::run()
 								}
 								case STATUS_CODE_WRITING_REDUCE:
 								{
-										std::cout << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
+										//std::cout << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
 										SendPingRPCToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_REDUCE_WRITE_COMPLETE:
 								{
-										std::cout << "Done writing worker reduce for worker " << std::to_string(i) << "\n";
+										//std::cout << "Done writing worker reduce for worker " << std::to_string(i) << "\n";
 										ws->state = STATUS_CODE_IDLE;
 										break;
 								}
@@ -488,7 +488,7 @@ void Master::SendReduceToWorker(WorkerStatus * ws, ReduceTask * rt)
 				struct timeval tv;
 				gettimeofday(&tv, NULL);
 
-				ws->state = STATUS_CODE_WORKING;
+				ws->state = STATUS_CODE_REDUCE_WORKING;
 				ws->assignedTime = tv.tv_sec;
 				ws->assignedReduce = rt;
 				ws->slowWorkerFlags = WORKER_FLAGS_NORMAL;
@@ -515,7 +515,7 @@ void Master::SendWriteReduceToFile(WorkerStatus * ws)
 
 		grpc::ClientContext context;
 
-		grpc::Status status = ws->stub->WriteReduceToIntermediateFile(&context, request, &reply);
+		grpc::Status status = ws->stub->WriteReduceFile(&context, request, &reply);
 
 		if (status.ok())
 		{
@@ -560,7 +560,7 @@ void Master::SendDropReduceToFile(WorkerStatus * ws)
 
 void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 {
-	 	std::cout << "Sending shard " << shard->shardID << "\n";
+	 	//std::cout << "Sending shard " << shard->shardID << "\n";
 
 
 		masterworker::ShardInfo  request;
@@ -570,7 +570,7 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 		request.set_filename(shard->fileName);
 		request.set_offset(shard->offset);
 		request.set_shardsize(shard->shardSize);
-		std::cout << "Sending shardID " << std::to_string(shard->shardID) << "\n";
+		//std::cout << "Sending shardID " << std::to_string(shard->shardID) << "\n";
 		request.set_shardid(shard->shardID);
 
 		grpc::ClientContext context;
@@ -586,7 +586,7 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 			  struct timeval tv;
 				gettimeofday(&tv, NULL);
 
-				ws->state = STATUS_CODE_WORKING;
+				ws->state = STATUS_CODE_MAP_WORKING;
 				ws->assignedTime = tv.tv_sec;
 				ws->assignedShard = shard;
 
@@ -625,7 +625,7 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 				int duration = tv.tv_sec - ws->assignedTime;
 
-				if (duration > 1 && ws->state == STATUS_CODE_WORKING)
+				if (duration > 1 && (ws->state == STATUS_CODE_MAP_WORKING || ws->state == STATUS_CODE_REDUCE_WORKING))
 				{
 					  std::cout << "Worker flaged as slow!";
 						ws->slowWorkerFlags = WORKER_FLAGS_SLOW;
