@@ -103,6 +103,10 @@ void SyncWorker::DoShardMapping()
 
         // todo figure out what to do with this
     }
+    else
+    {
+        std::cout << "Done with file shard " << std::to_string(fileShardArg.shardID) << "\n";
+    }
 
     shard.close();
 

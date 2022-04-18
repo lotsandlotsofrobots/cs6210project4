@@ -55,42 +55,12 @@ class Worker {
 
 		/* DON'T change this function's signature */
 		bool run();
-/*
-		void SetupBaseMapperImpl(std::string outputFile);
 
-		int  GetWorkerID()                     { return workerID; }
-		void SetWorkerID(int i)                { mapper->impl_->SetWorkerID(i);         reducer->impl_->SetWorkerID(i); }
-    void SetOutputDirectory(std::string s) { mapper->impl_->SetOutputDirectory(s);  reducer->impl_->SetOutputDirectory(s); }
-    void SetNumberOfWorkers(int i)         { mapper->impl_->SetNumberOfWorkers(i);  reducer->impl_->SetNumberOfWorkers(i); }
-    void SetNumberOfFiles(int i)           { mapper->impl_->SetNumberOfFiles(i);    reducer->impl_->SetNumberOfFiles(i); }
-		void SetReduceSubset(int i)            {                                        reducer->impl_->SetReduceSubset(i); }
-		void SetupMapper()                     { mapper->impl_->Setup(); }
-		void SetupReducer()                    { reducer->impl_->Setup(); }
-
-		void Map(std::string s);
-		void WriteShardToIntermediateFile()    { mapper->impl_->WriteShardToIntermediateFile(); }
-		void DiscardShardResults()             { mapper->impl_->DiscardShardResults(); }
-
-		void SetStatusCode(int i)              { statusCode = i; }
-		int GetStatusCode()                    { return statusCode; }
-*/
 	private:
 		/* NOW you can add below, data members and member functions as per the need of your implementation*/
 
 		std::string ipAndPort;
-		/*
-		int statusCode;
-		int workerID;
 
-		std::unique_ptr<grpc::ServerCompletionQueue>  completionQueue;
-		masterworker::MapperReducer::AsyncService     asyncService;
-		std::unique_ptr<grpc::Server>                 server;
-
-		ServerBuilder builder;
-
-		std::shared_ptr<BaseMapper> mapper;
-		std::shared_ptr<BaseReducer> reducer;
-		*/
 };
 
 

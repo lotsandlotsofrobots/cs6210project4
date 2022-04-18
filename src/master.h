@@ -22,31 +22,24 @@ using grpc::ServerContext;
 
 using masterworker::MapperReducer;
 
-
+#define WORKER_FLAGS_NORMAL           0
+#define WORKER_FLAGS_SLOW             1
+#define WORKER_FLAGS_SLOW_REASSIGNED  2
 
 /* CS6210_TASK: Handle all the bookkeeping that Master is supposed to do.
 	This is probably the biggest task for this project, will test your understanding of map reduce */
 
 class Master {
-/*
-	enum WorkerState
-	{
-		  IDLE = 0,
-			BUSY = 1,
-			DONE = 2,
-			ERROR = 3,
-			MISSING = 4
-	};
-*/
+
 	struct WorkerStatus
 	{
 			int                 workerID;
 			std::string         ipAndPort;
-			//WorkerState         state;
 			int                 state;
 			FileShard *         assignedShard;
 			unsigned long long  lastPingTime;
 			unsigned long long  assignedTime;
+			int                 slowWorkerFlags;
 
 			std::shared_ptr<grpc::Channel> channel;
 			std::unique_ptr<MapperReducer::Stub> stub;
@@ -142,14 +135,7 @@ bool Master::run() {
 
 	std::cout << "In master::run()!\n";
 
-	// enter the main processing loop
-
-	/*std::vector<WorkerStatus*>  idleWorkers;
-	std::vector<WorkerStatus*>  busyWorkers;
-	std::vector<WorkerStatus*>  deadWorkers;*/
 	std::vector<WorkerStatus*> workers;
-
-	//std::vector<FileShard>		 assignedShards;
 	std::vector<FileShard*>    completedShards;  // just store a pointer to the shard, no point to duplicating memory
 
 	for (int i = 0; i < mr_spec->ipAddressAndPorts.size(); i++)
@@ -217,6 +203,18 @@ bool Master::run() {
 							{
 									std::cout << "Worker " << std::to_string(i) << " is WORKING\n";
 									SendPingRPCToWorker(ws);
+
+									if (ws->slowWorkerFlags == WORKER_FLAGS_SLOW)
+									{
+											std::cout << "Dealing with slow worker here.\n";
+
+										  FileShard * shard = ws->assignedShard;
+											shard->state = FILE_SHARD_STATE_UNASSIGNED;
+											// don't NULL it's assignedShard though, just let someone else grab it up
+											// BUT don't let it re-grab it
+											ws->assignedShard->workersThatAttemptedThis.push_back(ws->workerID);
+									}
+
 									break;
 							}
 							case STATUS_CODE_FAILED:
@@ -234,9 +232,10 @@ bool Master::run() {
 							}
 							case STATUS_CODE_COMPLETE:
 							{
-									std::cout << "Worker " << std::to_string(i) << " is COMPLETE\n";
-
+									std::cout << "Worker is completed.\n";
 									FileShard * shard = ws->assignedShard;
+									std::cout << "Worker " << std::to_string(i) << ", (" << std::to_string(shard->shardID) << ") is COMPLETE\n";
+
 
 									if (std::find(completedShards.begin(),
 																 completedShards.end(),
@@ -260,8 +259,13 @@ bool Master::run() {
 							{
 									std::cout << "Worker " << std::to_string(i) << " is MISSING\n";
 
+									// reassign it's work
+									FileShard * shard = ws->assignedShard;
+									shard->state = FILE_SHARD_STATE_UNASSIGNED;
+
+									// try to get it back
+									SendPingRPCToWorker(ws);
 									break;
-								  // just here for completion, not doing anything with this
 							}
 							case STATUS_CODE_WRITING_MAP:
 							{
@@ -278,47 +282,12 @@ bool Master::run() {
 					}
 			}
 
-		/*	std::cout << "Your code is hanging here because you took all the workers out of idle but didn't put them anywhere.\n";
-			std::cout << "Your RPC is being done synchronously.  You need to use pings to monitor for when a worker is done.\n";
-			std::cout << "You need to add a timeout to your synchronous calls as well, so if they timeout the whole app doesn't hang.\n";
-			*/
+			std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let everyone get started
 
-			//std::this_thread::sleep_for(std::chrono::milliseconds(500)); // let everyone get started
-			std::this_thread::sleep_for(std::chrono::milliseconds(500)); // let everyone get started
-
-			// so now we have to go through and try to ping everyone.
-			// we should have zero idle workers because they should all be in the busy queue after that last loop
-/*
-			// kind of convoluted loop but it works...
-			int numberOfBusyWorkers = busyWorkers.size();
-			int numBusyWorkersVisited = 0;
-			int busyWorkerIndex = 0;
-
-			while (numBusyWorkersVisited < numberOfBusyWorkers)
-			{
-					switch(busyWorkers)
-			}
-*/
 	}
 
 
 	std::cout << "MASTER SENT EVERY SHARD TO WORKERS!!\n";
-
-
-
-	/*for (int i = 0; i < mr_spec->ipAddressAndPorts.size(); i++)
-	{
-			std::string ipAddressAndPort = mr_spec->ipAddressAndPorts[i];
-			FileShard shard = (*fileShards)[i];
-		  SendShardRPCToWorker(ipAddressAndPort, shard);
-	}
-
-	for (int i = 0; i < mr_spec->ipAddressAndPorts.size(); i++)
-	{
-			std::string ipAddressAndPort = mr_spec->ipAddressAndPorts[i];
-			//FileShard shard = (*fileShards)[i];
-			SendPingRPCToWorker(ipAddressAndPort);
-	}*/
 
 	return true;
 }
@@ -326,24 +295,11 @@ bool Master::run() {
 
 void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 {
-		std::cout << "Sending shard to worker @ " << ws->ipAndPort << "!\n";
+	 std::cout << "Sending shard " << shard->shardID << "\n";
 
-		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
-		grpc::CompletionQueue          completionQueue;
-		grpc::ClientContext 					 context;
 
-		masterworker::ShardInfo        request;
-		masterworker::Ack              response;
-
-		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
-		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
-
-		grpc::Status                   status;
-
-		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
-		context.set_deadline(deadline);
-
-		channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
+		masterworker::ShardInfo  request;
+		masterworker::Ack        reply;
 
 		// write the name to the request
 		request.set_filename(shard->fileName);
@@ -352,41 +308,34 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 		std::cout << "Sending shardID " << std::to_string(shard->shardID) << "\n";
 		request.set_shardid(shard->shardID);
 
-		// create a stub using the channel
-		mapStub = masterworker::MapperReducer::NewStub(channel);
+		grpc::ClientContext context;
 
-		// create an asynchronous response reader using the stub, request, and completion queue
-		//   - this will watch for the response in the background
-		//   - then read it into a BidReply
-		//   - then let us know when the BidReply is available for reading via the completionQueue
-		responseReader =
-				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
-						(mapStub->AsyncMapShard(&context, request, &completionQueue));
+		grpc::Status status = ws->stub->MapShard(&context, request, &reply);
 
-		std::cout << " - Calling finish\n";
-
-		long long int randTag = rand();
-		void * tag = (void*)randTag;
-
-		//responseReader->Finish(&response, &status, (void*)(long long int) 1);
-		responseReader->Finish(&response, &status, tag);
-
-		void* got_tag;
-		bool ok = false;
-		completionQueue.Next(&got_tag, &ok);
-
-		if (ok && got_tag == tag)
+		if (status.ok())
 		{
-			  std::cout << " - Got okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				// reset this flag
+				ws->slowWorkerFlags = WORKER_FLAGS_NORMAL;
+				ws->state = reply.response();
+
+			  struct timeval tv;
+				gettimeofday(&tv, NULL);
+
 				ws->state = STATUS_CODE_WORKING;
-				shard->state = FILE_SHARD_STATE_ASSIGNED;
+				ws->assignedTime = tv.tv_sec;
 				ws->assignedShard = shard;
+
+				shard->state = FILE_SHARD_STATE_ASSIGNED;
+
+				return;
 		}
 		else
 		{
-			  ws->state = STATUS_CODE_MISSING;
+				std::cout << " - SendShardRPCToWorker not okay!\n";
+				std::cout << " - status is " << (status.error_code()) << "\n";
+				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				ws->state = reply.response();
+
 		}
 
 }
@@ -395,111 +344,39 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 {
 
-	masterworker::EmptyMsg request;
-	masterworker::Ack        reply;
+		masterworker::EmptyMsg request;
+		masterworker::Ack        reply;
 
-	grpc::ClientContext context;
+		grpc::ClientContext context;
 
-	grpc::Status status = ws->stub->Ping(&context, request, &reply);
+		grpc::Status status = ws->stub->Ping(&context, request, &reply);
 
-	if (status.ok())
-	{
-			return;
-	}
-	else
-	{
-			std::cout << " - SendWorkerInfoToWorker not okay!\n";
-			std::cout << " - status is " << (status.error_code()) << "\n";
-			std::cout << " - status msg is " << (status.error_message()) << "\n";
-	}
-
-	/*
-		if (ws == NULL)
+		if (status.ok())
 		{
-	      std::cout << "ERROR:  Could not send ping to worker because ws was null!";
-		}
+				ws->state = reply.response();
 
-		std::cout << "Sending ping to worker @ " << ws->ipAndPort << "!\n";
+				struct timeval tv;
+				gettimeofday(&tv, NULL);
 
-		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
-		grpc::CompletionQueue          completionQueue;
-		grpc::ClientContext 					 context;
+				int duration = tv.tv_sec - ws->assignedTime;
 
-		masterworker::EmptyMsg      request;
-		masterworker::Ack           response;
+				if (duration > 1 && ws->state == STATUS_CODE_WORKING)
+				{
+					  std::cout << "Worker flaged as slow!";
+						ws->slowWorkerFlags = WORKER_FLAGS_SLOW;
+				}
 
-		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
-		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
-
-		grpc::Status                   status;
-
-		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
-		context.set_deadline(deadline);
-
-		channel = grpc::CreateChannel( ws->ipAndPort, grpc::InsecureChannelCredentials() );
-
-		mapStub = masterworker::MapperReducer::NewStub(channel);
-
-		// create an asynchronous response reader using the stub, request, and completion queue
-		//   - this will watch for the response in the background
-		//   - then read it into a BidReply
-		//   - then let us know when the BidReply is available for reading via the completionQueue
-		responseReader =
-				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
-						(mapStub->AsyncPing(&context, request, &completionQueue));
-
-		std::cout << " - Calling finish\n";
-
-		long long int randTag = rand();
-		void * tag = (void*)randTag;
-
-		responseReader->Finish(&response, &status, (void*)tag);
-
-		void* got_tag = 0;
-		bool ok = false;
-*/
-
-/*
-		gpr_timespec deadline;
-		deadline.clock_type = GPR_TIMESPAN;
-		deadline.tv_sec = 1;
-		deadline.tv_nsec = 0;
-
-		grpc::CompletionQueue::NextStatus pingStatus = completionQueue.AsyncNext(&got_tag, &ok, deadline);
-*/
-/*
-		grpc::CompletionQueue::NextStatus pingStatus = completionQueue.AsyncNext(&got_tag, &ok, std::chrono::system_clock::now() + std::chrono::milliseconds(1000));
-
-		// regardless of response, record the time we pinged it.
-		struct timeval thetime;
-		gettimeofday(&thetime, NULL);
-
-		ws->lastPingTime = thetime.tv_sec;
-
-		if (pingStatus == grpc::CompletionQueue::GOT_EVENT && ok && got_tag == tag)
-		{
-			  std::cout << " - Got okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
-				std::cout << " - response is " << response.response() << "\n";
-
-				// do stuff here!
-				// - set workerstatus statuscode here!
-				// DO stuff in the main thread.
-
-				ws->state = response.response();
+				return;
 		}
 		else
 		{
-			  std::cout << "Worker did not respond to ping!\n";
-				std::cout << "Moving worker to \"missing\" state until a response is reached.\n";
+				std::cout << " - SendPingRPCToWorker not okay!\n";
+				std::cout << " - status is " << (status.error_code()) << "\n";
+				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				ws->state = reply.response();
 
-				std::cout << "Okay was: " << std::to_string(ok) << "\n";
-				std::cout << "got_tag was: " << got_tag << " and we expected " << tag << "\n";
-
-				ws->state = STATUS_CODE_MISSING;
 		}
-		*/
+
 }
 
 
@@ -529,66 +406,6 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 		  	std::cout << " - status msg is " << (status.error_message()) << "\n";
 		}
 
-	/*
-		std::string ipAndPort = ws->ipAndPort;
-		std::cout << "Sending setup info to worker @ " << ipAndPort << "!\n";
-
-		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
-		grpc::CompletionQueue          completionQueue;
-		grpc::ClientContext 					 context;
-
-		masterworker::WorkerInfo       request;
-		masterworker::Ack              response;
-
-		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
-		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
-
-		grpc::Status                   status;
-
-		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
-		context.set_deadline(deadline);
-
-		channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
-
-		// write the name to the request
-		request.set_workerid(i);
-		request.set_outputdirectory(mr_spec->outputDir);
-		request.set_numberofworkers(mr_spec->numberOfWorkers);
-		request.set_numberoffiles(mr_spec->numberOfOutputFiles);
-
-		// create a stub using the channel
-		mapStub = masterworker::MapperReducer::NewStub(channel);
-
-		// create an asynchronous response reader using the stub, request, and completion queue
-		//   - this will watch for the response in the background
-		//   - then read it into a BidReply
-		//   - then let us know when the BidReply is available for reading via the completionQueue
-		responseReader =
-				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
-						(mapStub->AsyncSetWorkerInfo(&context, request, &completionQueue));
-
-		std::cout << " - Calling finish\n";
-
-		long long int randTag = rand();
-		void * tag = (void*)randTag;
-
-		//responseReader->Finish(&response, &status, (void*)(long long int) 1);
-		responseReader->Finish(&response, &status, tag);
-
-		void* got_tag;
-		bool ok = false;
-		//completionQueue.Next(&got_tag, &ok);
-
-		grpc::CompletionQueue::NextStatus asyncStatus = completionQueue.AsyncNext(&got_tag, &ok, std::chrono::system_clock::now() + std::chrono::milliseconds(1000));
-
-		if (ok && got_tag == tag && asyncStatus == grpc::CompletionQueue::GOT_EVENT)
-		{
-			  std::cout << " - Got okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
-		}
-*/
-
 }
 
 
@@ -597,112 +414,49 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 
 void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 {
-	/*
-		std::string ipAndPort = ws->ipAndPort;
-		std::cout << "Sending write intermediate files to worker @ " << ipAndPort << "!\n";
+		masterworker::EmptyMsg request;
+		masterworker::Ack        reply;
 
-		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
-		grpc::CompletionQueue          completionQueue;
-		grpc::ClientContext 					 context;
+		grpc::ClientContext context;
 
-		masterworker::EmptyMsg         request;
-		masterworker::Ack              response;
+		grpc::Status status = ws->stub->WriteShardToIntermediateFile(&context, request, &reply);
 
-		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
-		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
-
-		grpc::Status                   status;
-
-		channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
-
-		// create a stub using the channel
-		mapStub = masterworker::MapperReducer::NewStub(channel);
-
-		// create an asynchronous response reader using the stub, request, and completion queue
-		//   - this will watch for the response in the background
-		//   - then read it into a BidReply
-		//   - then let us know when the BidReply is available for reading via the completionQueue
-		responseReader =
-				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
-						(mapStub->AsyncWriteShardToIntermediateFile(&context, request, &completionQueue));
-
-		std::cout << " - Calling finish\n";
-
-		long long int randTag = rand();
-		void * tag = (void*)randTag;
-
-		responseReader->Finish(&response, &status, tag);
-
-		void* got_tag;
-		bool ok = false;
-
-		grpc::CompletionQueue::NextStatus asyncStatus = completionQueue.AsyncNext(&got_tag, &ok, std::chrono::system_clock::now() + std::chrono::milliseconds(1000));
-
-		//completionQueue.Next(&got_tag, &ok);
-
-		if (ok && got_tag == tag && asyncStatus == grpc::CompletionQueue::GOT_EVENT)
+		if (status.ok())
 		{
-				std::cout << " - Got okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				//ws->state = reply.response();
+				return;
 		}
-	*/
+		else
+		{
+				std::cout << " - SendWorkerInfoToWorker not okay!\n";
+				std::cout << " - status is " << (status.error_code()) << "\n";
+				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				ws->state = reply.response();
+		}
+
 }
 
 
 
 void Master::SendDropIntermediateToFile(WorkerStatus * ws)
 {
-	/*
-		std::string ipAndPort = ws->ipAndPort;
-		std::cout << "Sending dump intermediate files to worker @ " << ipAndPort << "!\n";
+		masterworker::EmptyMsg request;
+		masterworker::Ack        reply;
 
-		std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
-		grpc::CompletionQueue          completionQueue;
-		grpc::ClientContext 					 context;
+		grpc::ClientContext context;
 
-		masterworker::EmptyMsg         request;
-		masterworker::Ack              response;
+		grpc::Status status = ws->stub->DiscardShardResults(&context, request, &reply);
 
-		std::unique_ptr<masterworker::MapperReducer::Stub>  mapStub;
-		std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>  responseReader;
-
-		grpc::Status                   status;
-
-		channel = grpc::CreateChannel( ipAndPort, grpc::InsecureChannelCredentials() );
-
-		// create a stub using the channel
-		mapStub = masterworker::MapperReducer::NewStub(channel);
-
-		// create an asynchronous response reader using the stub, request, and completion queue
-		//   - this will watch for the response in the background
-		//   - then read it into a BidReply
-		//   - then let us know when the BidReply is available for reading via the completionQueue
-		responseReader =
-				std::unique_ptr<grpc::ClientAsyncResponseReader<masterworker::Ack>>
-						(mapStub->AsyncDiscardShardResults(&context, request, &completionQueue));
-
-		std::cout << " - Calling finish\n";
-
-		long long int randTag = rand();
-		void * tag = (void*)randTag;
-
-
-		responseReader->Finish(&response, &status, tag);
-
-		void* got_tag;
-		bool ok = false;
-
-
-
-//		completionQueue.Next(&got_tag, &ok);
-		grpc::CompletionQueue::NextStatus asyncStatus = completionQueue.AsyncNext(&got_tag, &ok, std::chrono::system_clock::now() + std::chrono::milliseconds(1000));
-
-		if (ok && got_tag == tag && asyncStatus == grpc::CompletionQueue::GOT_EVENT)
+		if (status.ok())
 		{
-				std::cout << " - Got okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";// ? "okay!" : "not okay!") << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				return;
 		}
-	*/
+		else
+		{
+				std::cout << " - SendWorkerInfoToWorker not okay!\n";
+				std::cout << " - status is " << (status.error_code()) << "\n";
+				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				ws->state = reply.response();
+		}
+
 }
