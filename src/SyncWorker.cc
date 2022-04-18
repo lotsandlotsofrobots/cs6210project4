@@ -10,7 +10,7 @@ void MonitorAndDoWork(SyncWorker * worker)
         {
             // these are almost the only cases where we do something,
             // the rest are just waiting on outside intervention
-            case STATUS_CODE_WORKING:
+            case STATUS_CODE_MAP_WORKING:
                 worker->DoShardMapping();
                 break;
             case STATUS_CODE_WRITING_MAP:
@@ -26,6 +26,18 @@ void MonitorAndDoWork(SyncWorker * worker)
             case STATUS_CODE_FAILED:
             case STATUS_CODE_MISSING:
             case STATUS_CODE_MAP_WRITE_COMPLETE:
+                break;
+
+            case STATUS_CODE_REDUCE_WORKING:
+                worker->DoReducing();
+                break;
+            case STATUS_CODE_WRITING_REDUCE:
+                worker->GetReducerImpl()->WriteReduce();
+                worker->SetStatusCode(STATUS_CODE_REDUCE_WRITE_COMPLETE);
+                break;
+            case STATUS_CODE_REDUCE_DUMP_RESULTS:
+                worker->GetReducerImpl()->DiscardReduce();
+                worker->SetStatusCode(STATUS_CODE_REDUCE_DUMP_RESULTS_COMPLETE);
                 break;
         }
 
@@ -174,6 +186,50 @@ Status SyncWorker::DiscardShardResults( ServerContext * context, const EmptyMsg*
     reply->set_response(1);
     return Status::OK;
 }
+
+
+
+
+
+
+
+void DoReducing()
+{
+
+}
+
+Status SyncWorker::Reduce(ServerContext * context, const ShardInfo* request, Ack * reply)
+{
+
+}
+
+
+Status SyncWorker::WriteReduce(ServerContext * context, const EmptyMsg* request, Ack * reply)
+{
+    SetStatusCode( STATUS_CODE_WRITING_MAP );
+
+    // let thread pick up the flag and write everything
+
+    reply->set_response(1);
+    return Status::OK;
+}
+
+
+Status SyncWorker::DiscardReduce(ServerContext * context, const EmptyMsg* request, Ack * reply)
+{
+    SetStatusCode(STATUS_CODE_MAP_DUMP_RESULTS);
+
+    reply->set_response(1);
+    return Status::OK;
+}
+
+
+
+
+
+
+
+
 
 
 

@@ -28,15 +28,23 @@ using masterworker::MapperReducer;
 ******************************************************************************/
 
 // user first byte for overall worker state
-#define STATUS_CODE_IDLE                        0x00000000
-#define STATUS_CODE_WORKING                     0x00000001
-#define STATUS_CODE_COMPLETE                    0x00000002
-#define STATUS_CODE_FAILED                      0x00000004
-#define STATUS_CODE_MISSING                     0x00000008  // only the master sets this, a worker doesn't know it's missing
-#define STATUS_CODE_WRITING_MAP                 0x00000010
-#define STATUS_CODE_MAP_WRITE_COMPLETE          0x00000020
-#define STATUS_CODE_MAP_DUMP_RESULTS            0x00000040
-#define STATUS_CODE_MAP_DUMP_RESULTS_COMPLETE   0x00000080
+#define STATUS_CODE_IDLE                           0x00000000
+#define STATUS_CODE_COMPLETE                       0x00000002
+#define STATUS_CODE_FAILED                         0x00000004
+#define STATUS_CODE_MISSING                        0x00000008  // only the master sets this, a worker doesn't know it's missing
+
+#define STATUS_CODE_WRITING_MAP                    0x00000010
+#define STATUS_CODE_MAP_WRITE_COMPLETE             0x00000020
+#define STATUS_CODE_MAP_DUMP_RESULTS               0x00000040
+#define STATUS_CODE_MAP_DUMP_RESULTS_COMPLETE      0x00000080
+#define STATUS_CODE_MAP_WORKING                    0x00000100
+
+#define STATUS_CODE_WRITING_REDUCE                 0x00001000
+#define STATUS_CODE_REDUCE_WRITE_COMPLETE          0x00002000
+#define STATUS_CODE_REDUCE_DUMP_RESULTS            0x00004000
+#define STATUS_CODE_REDUCE_DUMP_RESULTS_COMPLETE   0x00008000
+#define STATUS_CODE_REDUCE_WORKING                 0x00010000
+
 
 // next three bytes for information
 #define STATUS_CODE_INVALID_ARGS       0x00000100

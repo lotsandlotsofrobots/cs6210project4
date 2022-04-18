@@ -55,7 +55,8 @@ inline bool BaseMapperInternal::Setup()
 {
 		std::cout << "Setting up:\n" << "\n";
 
-		std::string intermediateOutputFile = OutputDirectory + "/mapper_" + std::to_string(WorkerID);
+		//std::string intermediateOutputFile = OutputDirectory + "/mapper_" + std::to_string(WorkerID);
+		std::string intermediateOutputFile = "./intermediate/mapper_" + std::to_string(WorkerID);
 
 		for(int i = 0; i < NumberOfFiles; i++)
 		{
@@ -144,8 +145,9 @@ struct BaseReducerInternal {
     int          NumberOfFiles;
 		int          ReduceSubset;
 
-		std::vector<std::ifstream> inputFiles;
 		std::ofstream outputFile;
+
+		std::map<std::string, std::string> reduceKeyValuePairs;
 
 		void SetWorkerID(int i) { WorkerID = i; }
     void SetOutputDirectory(std::string s) { OutputDirectory = s; }
@@ -154,7 +156,8 @@ struct BaseReducerInternal {
     void SetReduceSubset(int i) { ReduceSubset = i; }
 		void Setup();
 
-
+		void WriteReduce();
+		void DiscardReduce();
 };
 
 
@@ -169,12 +172,37 @@ inline BaseReducerInternal::BaseReducerInternal() {
 
 inline void BaseReducerInternal::Setup()
 {
-		std::cout << "still have to do this later.\n";
+		std::cout << "Setting up:\n" << "\n";
+
+		outputFile = std::ofstream(OutputDirectory + "/reduce_" + ".out");
+
 }
 
 
 
 /* CS6210_TASK Implement this function */
 inline void BaseReducerInternal::emit(const std::string& key, const std::string& val) {
-	std::cout << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
+
+		if ( reduceKeyValuePairs.count(key) == 0 )
+		{
+			  reduceKeyValuePairs[key] = val;
+		}
+
+		//std::cout << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
+}
+
+
+inline void BaseReducerInternal::WriteReduce()
+{
+		for (std::map<std::string, std::string>::iterator i = reduceKeyValuePairs.begin(); i != reduceKeyValuePairs.end(); i++)
+		{
+			  outputFile << i->first << " " << i->second;
+		}
+
+		outputFile.flush();
+}
+
+inline void BaseReducerInternal::DiscardReduce()
+{
+	  reduceKeyValuePairs.clear();
 }

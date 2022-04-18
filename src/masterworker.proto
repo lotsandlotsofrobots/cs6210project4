@@ -12,6 +12,8 @@ service MapperReducer {
     rpc DiscardShardResults(EmptyMsg) returns (Ack) {}
 
     rpc Reduce(ReduceSubset) returns (Ack) {}
+    rpc WriteReduceToIntermediateFile(EmptyMsg) returns (Ack) {}
+    rpc DiscardReduceResults(EmptyMsg) returns (Ack) {}
 }
 
 
