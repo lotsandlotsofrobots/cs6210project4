@@ -9,7 +9,7 @@ WriteShardToIntermediateFileCallData::WriteShardToIntermediateFileCallData(Mappe
     status_ = CREATE;
     worker = w;
 
-    std::cout << "Requesting write shard to intermediate file.\n";
+    std::cerr << "Requesting write shard to intermediate file.\n";
      // Invoke the serving logic right away.
     Proceed();
 }
@@ -36,7 +36,7 @@ void WriteShardToIntermediateFileCallData::Proceed()
         worker->SetStatusCode(STATUS_CODE_WRITING_MAP);
 				new WriteShardToIntermediateFileCallData(service_, cq_, worker);
 
-				std::cout << "Responding to write shard to intermediate file!\n";
+				std::cerr << "Responding to write shard to intermediate file!\n";
 
 				status_ = FINISH;
 				reply_.set_response(1);

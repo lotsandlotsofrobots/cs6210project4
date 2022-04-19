@@ -10,7 +10,7 @@ PingCallData::PingCallData(MapperReducer::AsyncService* service, ServerCompletio
 		worker = w;
 
 
-		std::cout << "Requesting ping.\n";
+		std::cerr << "Requesting ping.\n";
 		 // Invoke the serving logic right away.
 		Proceed();
 }
@@ -36,7 +36,7 @@ void PingCallData::Proceed()
 				// part of its FINISH state.
 				new PingCallData(service_, cq_, worker);
 
-				std::cout << "Responding to ping!\n";
+				std::cerr << "Responding to ping!\n";
 
 				status_ = FINISH;
 				reply_.set_response(worker->GetStatusCode());
@@ -53,7 +53,7 @@ void PingCallData::Proceed()
 /*
 void PingCallData::Finish()
 {
-	std::cout << "Worker done with this shard.\n";
+	std::cerr << "Worker done with this shard.\n";
 	status_ = FINISH;
 	responder_.Finish(reply_, grpc::Status::OK, this);
 }

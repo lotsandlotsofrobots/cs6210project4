@@ -143,7 +143,7 @@ bool Master::run()
 		//   assign work based on number of bytes per shard
 		//
 
-		std::cout << "In master::run()!\n";
+		std::cerr << "In master::run()!\n";
 
 		std::vector<WorkerStatus*> workers;
 		std::vector<FileShard*>    completedShards;  // just store a pointer to the shard, no point to duplicating memory
@@ -205,18 +205,18 @@ bool Master::run()
 						{
 							  case STATUS_CODE_IDLE:
 								{
-										//std::cout << "Worker " << std::to_string(i) << " is IDLE\n";
+										std::cerr << "Worker " << std::to_string(i) << " is IDLE\n";
 										TryToAssignWorkToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_MAP_WORKING:
 								{
-										//std::cout << "Worker " << std::to_string(i) << " is WORKING\n";
+										std::cerr << "Worker " << std::to_string(i) << " is WORKING\n";
 										SendPingRPCToWorker(ws);
 
 										if (ws->slowWorkerFlags == WORKER_FLAGS_SLOW)
 										{
-												std::cout << "Dealing with slow worker here.\n";
+												std::cerr << "Dealing with slow worker here.\n";
 
 											  FileShard * shard = ws->assignedShard;
 												shard->state = FILE_SHARD_STATE_UNASSIGNED;
@@ -231,7 +231,7 @@ bool Master::run()
 								{
 									  // complicated case...  what do we do with this?
 										// reassign the shard, but NOT to this worker (?)
-										//std::cout << "Worker " << std::to_string(i) << " is FAILED\n";
+										std::cerr << "Worker " << std::to_string(i) << " is FAILED\n";
 
 										ws->assignedShard->workersThatAttemptedThis.push_back(ws->workerID);
 										ws->state = STATUS_CODE_IDLE;
@@ -242,17 +242,17 @@ bool Master::run()
 								}
 								case STATUS_CODE_COMPLETE:
 								{
-										//std::cout << "Worker is completed.\n";
+										//std::cerr << "Worker is completed.\n";
 										FileShard * shard = ws->assignedShard;
-										//std::cout << "Worker " << std::to_string(i) << ", (" << std::to_string(shard->shardID) << ") is COMPLETE\n";
+										std::cerr << "Worker " << std::to_string(i) << ", (" << std::to_string(shard->shardID) << ") is COMPLETE\n";
 
 
 										if (std::find(completedShards.begin(),
 																	 completedShards.end(),
 																	 shard) == completedShards.end())
 										{
-											  completedShards.push_back(shard);
-												shard->state = FILE_SHARD_STATE_COMPLETE;
+											  //completedShards.push_back(shard);
+												//shard->state = FILE_SHARD_STATE_COMPLETE;
 												ws->state = STATUS_CODE_WRITING_MAP;
 
 												SendWriteIntermediateToFile(ws);
@@ -267,7 +267,7 @@ bool Master::run()
 								}
 								case STATUS_CODE_MISSING:
 								{
-										//std::cout << "Worker " << std::to_string(i) << " is MISSING\n";
+										std::cerr << "Worker " << std::to_string(i) << " is MISSING\n";
 
 										// reassign it's work
 										FileShard * shard = ws->assignedShard;
@@ -279,14 +279,20 @@ bool Master::run()
 								}
 								case STATUS_CODE_WRITING_MAP:
 								{
-									  //std::cout << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
+									  std::cerr << "Waiting for worker " << std::to_string(i) << " to finish writing map "  << " for shard " << std::to_string(ws->assignedShard->shardID) << ".\n";
 										SendPingRPCToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_MAP_WRITE_COMPLETE:
 								{
-										//std::cout << "Done writing worker map for worker " << std::to_string(i) << "\n";
+										std::cerr << "Done writing worker map for worker " << std::to_string(i)  << " for shard " << std::to_string(ws->assignedShard->shardID) << "\n";
+
 										ws->state = STATUS_CODE_IDLE;
+										ws->assignedShard->state = FILE_SHARD_STATE_COMPLETE;
+
+										completedShards.push_back(ws->assignedShard);
+
+										ws->assignedShard = NULL;
 										break;
 								}
 						}
@@ -297,7 +303,7 @@ bool Master::run()
 		}
 
 
-		std::cout << "MASTER SENT EVERY SHARD TO WORKERS!!\n";
+		std::cerr << "MASTER SENT EVERY SHARD TO WORKERS!!\n";
 
 
 		// time to map things!
@@ -324,27 +330,29 @@ bool Master::run()
 
 		while (completedReduceTasks.size() != mr_spec->numberOfOutputFiles)
 		{
+				std::cerr << "Should be " << mr_spec->numberOfOutputFiles << ", actually is " << completedReduceTasks.size() << "\n";
+
 				for (int i = 0; i < workers.size(); i++)
 				{
 						WorkerStatus * ws = workers[i];
-
+						std::cerr << "Worker is " << ws->state << "\n";
 
 						switch(ws->state)
 						{
 								case STATUS_CODE_IDLE:
 								{
-										//std::cout << "Worker " << std::to_string(i) << " is IDLE\n";
+										std::cerr << "Worker " << std::to_string(i) << " is IDLE\n";
 										TryToAssignReduceToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_REDUCE_WORKING:
 								{
-										//std::cout << "Worker " << std::to_string(i) << " is WORKING\n";
+										std::cerr << "Worker " << std::to_string(i) << " is WORKING\n";
 										SendPingRPCToWorker(ws);
 
 										if (ws->slowWorkerFlags == WORKER_FLAGS_SLOW)
 										{
-												std::cout << "Dealing with slow worker here.\n";
+												std::cerr << "Dealing with slow worker here.\n";
 
 												ReduceTask * shard = ws->assignedReduce;
 												shard->state = REDUCE_STATE_UNASSIGNED;
@@ -359,7 +367,7 @@ bool Master::run()
 								{
 										// complicated case...  what do we do with this?
 										// reassign the shard, but NOT to this worker (?)
-										//std::cout << "Worker " << std::to_string(i) << " is FAILED\n";
+										std::cerr << "Worker " << std::to_string(i) << " is FAILED\n";
 
 										ws->assignedReduce->workersThatAttemptedThis.push_back(ws->workerID);
 										ws->state = STATUS_CODE_IDLE;
@@ -370,9 +378,9 @@ bool Master::run()
 								}
 								case STATUS_CODE_COMPLETE:
 								{
-										//std::cout << "Worker is completed.\n";
+										//std::cerr << "Worker is completed.\n";
 										ReduceTask * rt = ws->assignedReduce;
-										//std::cout << "Worker " << std::to_string(i) << ", (" << std::to_string(rt->reduceID) << ") is REDUCE COMPLETE\n";
+										std::cerr << "Worker " << std::to_string(i) << ", (" << std::to_string(rt->reduceID) << ") is REDUCE COMPLETE\n";
 
 
 										if (std::find(completedReduceTasks.begin(),
@@ -395,7 +403,7 @@ bool Master::run()
 								}
 								case STATUS_CODE_MISSING:
 								{
-										//std::cout << "Worker " << std::to_string(i) << " is MISSING\n";
+										std::cerr << "Worker " << std::to_string(i) << " is MISSING\n";
 
 										// reassign it's work
 										ReduceTask * rt = ws->assignedReduce;
@@ -407,13 +415,13 @@ bool Master::run()
 								}
 								case STATUS_CODE_WRITING_REDUCE:
 								{
-										//std::cout << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
+										std::cerr << "Waiting for worker " << std::to_string(i) << " to finish writing map.\n";
 										SendPingRPCToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_REDUCE_WRITE_COMPLETE:
 								{
-										//std::cout << "Done writing worker reduce for worker " << std::to_string(i) << "\n";
+										std::cerr << "Done writing worker reduce for worker " << std::to_string(i) << "\n";
 										ws->state = STATUS_CODE_IDLE;
 										break;
 								}
@@ -432,6 +440,8 @@ bool Master::run()
 
 void Master::TryToAssignReduceToWorker(WorkerStatus * ws)
 {
+			std::cerr << "Attempting to send reduce to worker.\n";
+
 			ReduceTask * rt = NULL;
 
 			// attempt to find a shard that this worker has not already tried
@@ -450,14 +460,17 @@ void Master::TryToAssignReduceToWorker(WorkerStatus * ws)
 					{
 						  if (temp->workersThatAttemptedThis[it] == ws->workerID)
 							{
+									std::cerr << "Found a reduce to send.\n";
 								  foundit = true;
 									rt = temp;
 									break;
 							}
 					}
 
+					// ??????
 					if ( foundit == false )
 					{
+							std::cerr << "Sending reduce to worker.\n";
 							SendReduceToWorker(ws, temp);
 							return;
 					}
@@ -469,7 +482,7 @@ void Master::TryToAssignReduceToWorker(WorkerStatus * ws)
 
 void Master::SendReduceToWorker(WorkerStatus * ws, ReduceTask * rt)
 {
-		std::cout << "Sending reduce " << rt->reduceID << "\n";
+		std::cerr << "Sending reduce " << rt->reduceID << "\n";
 
 
 		masterworker::ReduceSubset  request;
@@ -477,7 +490,7 @@ void Master::SendReduceToWorker(WorkerStatus * ws, ReduceTask * rt)
 
 		// write the name to the request
 		request.set_subset(rt->reduceID);
-		std::cout << "Sending reduce subset " << std::to_string(rt->reduceID) << "\n";
+		std::cerr << "Sending reduce subset " << std::to_string(rt->reduceID) << "\n";
 
 		grpc::ClientContext context;
 
@@ -499,9 +512,9 @@ void Master::SendReduceToWorker(WorkerStatus * ws, ReduceTask * rt)
 		}
 		else
 		{
-				std::cout << " - SendReduceToWorker not okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cerr << " - SendReduceToWorker not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
 				ws->state = reply.response();
 		}
 
@@ -510,6 +523,8 @@ void Master::SendReduceToWorker(WorkerStatus * ws, ReduceTask * rt)
 
 void Master::SendWriteReduceToFile(WorkerStatus * ws)
 {
+		std::cerr << "Sending write reduce to file\n";
+
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
 
@@ -524,9 +539,9 @@ void Master::SendWriteReduceToFile(WorkerStatus * ws)
 		}
 		else
 		{
-				std::cout << " - SendWriteReduceToFile not okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cerr << " - SendWriteReduceToFile not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
 				ws->state = reply.response();
 		}
 }
@@ -534,6 +549,8 @@ void Master::SendWriteReduceToFile(WorkerStatus * ws)
 
 void Master::SendDropReduceToFile(WorkerStatus * ws)
 {
+		std::cerr << "Sending drop reduce to file\n";
+
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
 
@@ -547,9 +564,9 @@ void Master::SendDropReduceToFile(WorkerStatus * ws)
 		}
 		else
 		{
-				std::cout << " - SendDropReduceToFile not okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cerr << " - SendDropReduceToFile not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
 				ws->state = reply.response();
 		}
 }
@@ -560,7 +577,7 @@ void Master::SendDropReduceToFile(WorkerStatus * ws)
 
 void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 {
-	 	//std::cout << "Sending shard " << shard->shardID << "\n";
+	 	std::cerr << "Sending shard " << shard->shardID << "\n";
 
 
 		masterworker::ShardInfo  request;
@@ -570,7 +587,7 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 		request.set_filename(shard->fileName);
 		request.set_offset(shard->offset);
 		request.set_shardsize(shard->shardSize);
-		//std::cout << "Sending shardID " << std::to_string(shard->shardID) << "\n";
+		//std::cerr << "Sending shardID " << std::to_string(shard->shardID) << "\n";
 		request.set_shardid(shard->shardID);
 
 		grpc::ClientContext context;
@@ -596,9 +613,9 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 		}
 		else
 		{
-				std::cout << " - SendShardRPCToWorker not okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cerr << " - SendShardRPCToWorker not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
 				ws->state = reply.response();
 
 		}
@@ -608,6 +625,7 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 
 void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 {
+		std::cerr << "Sending ping to worker\n";
 
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
@@ -627,7 +645,7 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 				if (duration > 1 && (ws->state == STATUS_CODE_MAP_WORKING || ws->state == STATUS_CODE_REDUCE_WORKING))
 				{
-					  std::cout << "Worker flaged as slow!";
+					  std::cerr << "Worker flaged as slow!";
 						ws->slowWorkerFlags = WORKER_FLAGS_SLOW;
 				}
 
@@ -635,9 +653,9 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 		}
 		else
 		{
-				std::cout << " - SendPingRPCToWorker not okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cerr << " - SendPingRPCToWorker not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
 				ws->state = reply.response();
 
 		}
@@ -648,6 +666,8 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 {
+		std::cerr << "sending worker info to worker\n";
+
 		masterworker::WorkerInfo request;
 		masterworker::Ack        reply;
 
@@ -666,9 +686,9 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 		}
 		else
 		{
-		  	std::cout << " - SendWorkerInfoToWorker not okay!\n";
-		  	std::cout << " - status is " << (status.error_code()) << "\n";
-		  	std::cout << " - status msg is " << (status.error_message()) << "\n";
+		  	std::cerr << " - SendWorkerInfoToWorker not okay!\n";
+		  	std::cerr << " - status is " << (status.error_code()) << "\n";
+		  	std::cerr << " - status msg is " << (status.error_message()) << "\n";
 		}
 
 }
@@ -679,6 +699,8 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 
 void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 {
+		std::cerr << "Sending write intermediate file\n";
+
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
 
@@ -693,9 +715,9 @@ void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 		}
 		else
 		{
-				std::cout << " - SendWorkerInfoToWorker not okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cerr << " - SendWorkerInfoToWorker not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
 				ws->state = reply.response();
 		}
 
@@ -705,6 +727,8 @@ void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 
 void Master::SendDropIntermediateToFile(WorkerStatus * ws)
 {
+		std::cerr << "Sending drop intermediate file\n";
+
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
 
@@ -718,9 +742,9 @@ void Master::SendDropIntermediateToFile(WorkerStatus * ws)
 		}
 		else
 		{
-				std::cout << " - SendWorkerInfoToWorker not okay!\n";
-				std::cout << " - status is " << (status.error_code()) << "\n";
-				std::cout << " - status msg is " << (status.error_message()) << "\n";
+				std::cerr << " - SendWorkerInfoToWorker not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
 				ws->state = reply.response();
 		}
 

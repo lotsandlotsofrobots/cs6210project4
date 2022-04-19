@@ -10,7 +10,7 @@ SetWorkerInfoCallData::SetWorkerInfoCallData(MapperReducer::AsyncService* servic
     worker = w;
 
 
-    std::cout << "Requesting set worker info.\n";
+    std::cerr << "Requesting set worker info.\n";
      // Invoke the serving logic right away.
     Proceed();
 }
@@ -36,7 +36,7 @@ void SetWorkerInfoCallData::Proceed()
 				// part of its FINISH state.
 				new SetWorkerInfoCallData(service_, cq_, worker);
 
-				std::cout << "Responding to worker info!\n";
+				std::cerr << "Responding to worker info!\n";
 
         worker->SetWorkerID(request_.workerid());
         worker->SetOutputDirectory(request_.outputdirectory());

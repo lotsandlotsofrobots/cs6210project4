@@ -36,7 +36,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 
 		if (!configFile.is_open())
 		{
-			  std::cout << "Couldn't open config file \"" << config_filename << "\"\n";
+			  std::cerr << "Couldn't open config file \"" << config_filename << "\"\n";
 				return false;
 		}
 
@@ -52,7 +52,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 
 				if (split == std::string::npos)
 				{
-					  std::cout << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
+					  std::cerr << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
 				}
 
 				key = line.substr(0, split);
@@ -66,7 +66,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 						}
 						catch (std::exception &e)
 						{
-						    std::cout << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
+						    std::cerr << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
 								return false;
 						}
 				}
@@ -86,7 +86,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 
 						for (int i = 0; i < mr_spec.ipAddressAndPorts.size(); i++)
 						{
-							  std::cout << "ipPort[" << std::to_string(i) << "] - " << mr_spec.ipAddressAndPorts[i] << "\n";
+							  std::cerr << "ipPort[" << std::to_string(i) << "] - " << mr_spec.ipAddressAndPorts[i] << "\n";
 						}
 				}
 				else if (key == "input_files")
@@ -105,7 +105,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 
 						for (int i = 0; i < mr_spec.inputFiles.size(); i++)
 						{
-								std::cout << "inputFile[" << std::to_string(i) << "] - " << mr_spec.inputFiles[i] << "\n";
+								std::cerr << "inputFile[" << std::to_string(i) << "] - " << mr_spec.inputFiles[i] << "\n";
 						}
 				}
 				else if (key == "output_dir")
@@ -120,7 +120,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 						}
 						catch (std::exception &e)
 						{
-								std::cout << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
+								std::cerr << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
 								return false;
 						}
 				}
@@ -132,7 +132,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 						}
 						catch (std::exception &e)
 						{
-								std::cout << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
+								std::cerr << "Error, invalid config line(" << std::to_string(lineNumber) << "): \"" << line << "\"\n";
 								return false;
 						}
 				}
@@ -142,7 +142,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 				}
 		}
 
-		std::cout << "Set up Mr. Spec" << "\n";
+		std::cerr << "Set up Mr. Spec" << "\n";
 
 		return true;
 }
@@ -154,37 +154,37 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec)
 		std::string error = "";
 		if (mr_spec.numberOfWorkers == -1)
 		{
-				std::cout << "numberOfWorkers not configured.\n";
+				std::cerr << "numberOfWorkers not configured.\n";
 				return false;
 		}
 		if (mr_spec.ipAddressAndPorts.size() == 0)
 		{
-				std::cout << "ipAddressAndPorts not configured.\n";
+				std::cerr << "ipAddressAndPorts not configured.\n";
 				return false;
 		}
 		if (mr_spec.inputFiles.size() == 0)
 		{
-				std::cout << "inputFiles not configured.\n";
+				std::cerr << "inputFiles not configured.\n";
 				return false;
 		}
 		if (mr_spec.outputDir == "null")
 		{
-				std::cout << "outputDir not configured.\n";
+				std::cerr << "outputDir not configured.\n";
 				return false;
 		}
 		if (mr_spec.numberOfOutputFiles == 0)
 		{
-				std::cout << "numberOfOutputFiles not configured.\n";
+				std::cerr << "numberOfOutputFiles not configured.\n";
 				return false;
 		}
 		if (mr_spec.desiredShardSize == 0)
 		{
-				std::cout << "desiredShardSize not configured.\n";
+				std::cerr << "desiredShardSize not configured.\n";
 				return false;
 		}
 		if (mr_spec.userID == "null")
 		{
-				std::cout << "userID not configured.\n";
+				std::cerr << "userID not configured.\n";
 				return false;
 		}
 
@@ -197,7 +197,7 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec)
 				size_t split = value.find(':');
 				if (split == std::string::npos)
 				{
-					  std::cout << value << " is not a valid ipAddr:port (missing ':')\n";
+					  std::cerr << value << " is not a valid ipAddr:port (missing ':')\n";
 						return false;
 				}
 
@@ -209,7 +209,7 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec)
 
 				if (rva != 0)
 				{
-						std::cout << value << " is not a valid ipAddr:port (host invalid)\n";
+						std::cerr << value << " is not a valid ipAddr:port (host invalid)\n";
 						return false;
 				}
 
@@ -219,13 +219,13 @@ inline bool validate_mr_spec(const MapReduceSpec& mr_spec)
 				}
 				catch (std::exception &e)
 				{
-					  std::cout << value << " is not a valid ipAddr:port (port invalid)\n";
+					  std::cerr << value << " is not a valid ipAddr:port (port invalid)\n";
 						return false;
 				}
 	  }
 
 
-		std::cout << "FINISH THIS LATER !!!\n";
+		std::cerr << "FINISH THIS LATER !!!\n";
 
 		return true;
 }

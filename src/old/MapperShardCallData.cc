@@ -9,7 +9,7 @@ void MapDataShard(MapperShardCallData * callData)
 
 		FileShard fileShardArg = callData->GetFileShard();
 
-		std::cout << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
+		std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
 
 		std::ifstream shard(fileShardArg.fileName);
 
@@ -43,13 +43,13 @@ void MapDataShard(MapperShardCallData * callData)
 
 		if (bytes != fileShardArg.offset + fileShardArg.shardSize)
 		{
-				std::cout << "Something went wrong here..\n";
-				std::cout << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n";
-				std::cout << "WorkerID: " << std::to_string(callData->GetWorkerID()) << "\n";
-				std::cout << "Filename: " << fileShardArg.fileName << "\n";
-				std::cout << "Offset:   " << std::to_string(fileShardArg.offset) << "\n";
-				std::cout << "Size:     " << std::to_string(fileShardArg.shardSize) << "\n";
-				std::cout << "Position: " << std::to_string(bytes) << "\n";
+				std::cerr << "Something went wrong here..\n";
+				std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n";
+				std::cerr << "WorkerID: " << std::to_string(callData->GetWorkerID()) << "\n";
+				std::cerr << "Filename: " << fileShardArg.fileName << "\n";
+				std::cerr << "Offset:   " << std::to_string(fileShardArg.offset) << "\n";
+				std::cerr << "Size:     " << std::to_string(fileShardArg.shardSize) << "\n";
+				std::cerr << "Position: " << std::to_string(bytes) << "\n";
 
 				callData->SetStatusCode(STATUS_CODE_FAILED | STATUS_CODE_SHARD_MATH_ERROR);
 

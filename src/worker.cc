@@ -74,7 +74,7 @@ bool Worker::run()
 */
 
 /*
-	std::cout << "worker.run(), I 'm not ready yet" <<std::endl;
+	std::cerr << "worker.run(), I 'm not ready yet" <<std::endl;
 	auto mapper = get_mapper_from_task_factory("cs6210");
 	mapper->map("I m just a 'dummy', a \"dummy line\"");
 */

@@ -41,7 +41,7 @@ bool MapReduceImpl::create_shards() {
 /* DON'T touch this function */
 bool MapReduceImpl::run_master() {
 
-    std::cout << "In run master!\n";
+    std::cerr << "In run master!\n";
 
     Master master(mr_spec_, file_shards_);
     return master.run();

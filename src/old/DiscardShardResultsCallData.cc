@@ -9,7 +9,7 @@ DiscardShardResultsCallData::DiscardShardResultsCallData(MapperReducer::AsyncSer
     status_ = CREATE;
     worker = w;
 
-    std::cout << "Requesting disard shard results.\n";
+    std::cerr << "Requesting disard shard results.\n";
      // Invoke the serving logic right away.
     Proceed();
 }
@@ -35,7 +35,7 @@ void DiscardShardResultsCallData::Proceed()
 				// part of its FINISH state.
 				new DiscardShardResultsCallData(service_, cq_, worker);
 
-				std::cout << "Responding to discard shard results!\n";
+				std::cerr << "Responding to discard shard results!\n";
 
         worker->DiscardShardResults();
 

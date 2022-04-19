@@ -44,15 +44,15 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 
 		for (int fileID = 0; fileID < mr_spec.inputFiles.size(); fileID++)
 		{
-				std::cout << mr_spec.inputFiles[fileID] << "\n";
+				std::cerr << mr_spec.inputFiles[fileID] << "\n";
 
 				std::string filePath = mr_spec.inputFiles[fileID];
 				unsigned long long desiredShardSize = mr_spec.desiredShardSize;
 
 				int fd = open(filePath.c_str(), O_RDWR);
 
-				std::cout << "opened " << filePath << ", fd: " << std::to_string(fd) << "\n";
-				std::cout << "Desired shard size: " << std::to_string(desiredShardSize) << "\n";
+				std::cerr << "opened " << filePath << ", fd: " << std::to_string(fd) << "\n";
+				std::cerr << "Desired shard size: " << std::to_string(desiredShardSize) << "\n";
 
 				unsigned long long fileSize = lseek(fd, 0, SEEK_END);
 
@@ -149,7 +149,7 @@ inline bool shard_files(const MapReduceSpec& mr_spec, std::vector<FileShard>& fi
 				munmap(fileMMAP, fileSize);
 		}
 
-		std::cout << "Created " << fileShards.size() << " shards!\n";
+		std::cerr << "Created " << fileShards.size() << " shards!\n";
 
 		return true;
 }

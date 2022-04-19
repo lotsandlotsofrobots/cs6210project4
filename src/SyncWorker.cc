@@ -2,7 +2,7 @@
 
 void MonitorAndDoWork(SyncWorker * worker)
 {
-    std::cout << "Worker " << std::to_string(worker->GetWorkerID()) << " - Monitoring and doing work!\n";
+    std::cerr << "Worker " << std::to_string(worker->GetWorkerID()) << " - Monitoring and doing work!\n";
 
     while(true)
     {
@@ -71,7 +71,7 @@ void SyncWorker::run()
 
 void SyncWorker::DoShardMapping()
 {
-    //std::cout << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
+    std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
 
     std::ifstream shard(fileShardArg.fileName);
 
@@ -103,13 +103,13 @@ void SyncWorker::DoShardMapping()
 
     if (bytes != fileShardArg.offset + fileShardArg.shardSize)
     {
-        std::cout << "Something went wrong here..\n";
-        std::cout << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n";
-        std::cout << "WorkerID: " << std::to_string(workerID) << "\n";
-        std::cout << "Filename: " << fileShardArg.fileName << "\n";
-        std::cout << "Offset:   " << std::to_string(fileShardArg.offset) << "\n";
-        std::cout << "Size:     " << std::to_string(fileShardArg.shardSize) << "\n";
-        std::cout << "Position: " << std::to_string(bytes) << "\n";
+        std::cerr << "Something went wrong here..\n";
+        std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n";
+        std::cerr << "WorkerID: " << std::to_string(workerID) << "\n";
+        std::cerr << "Filename: " << fileShardArg.fileName << "\n";
+        std::cerr << "Offset:   " << std::to_string(fileShardArg.offset) << "\n";
+        std::cerr << "Size:     " << std::to_string(fileShardArg.shardSize) << "\n";
+        std::cerr << "Position: " << std::to_string(bytes) << "\n";
 
         SetStatusCode(STATUS_CODE_FAILED | STATUS_CODE_SHARD_MATH_ERROR);
 
@@ -117,7 +117,7 @@ void SyncWorker::DoShardMapping()
     }
     else
     {
-        //std::cout << "Done with file shard " << std::to_string(fileShardArg.shardID) << "\n";
+        //std::cerr << "Done with file shard " << std::to_string(fileShardArg.shardID) << "\n";
     }
 
     shard.close();
@@ -198,6 +198,7 @@ Status SyncWorker::DiscardShardResults( ServerContext * context, const EmptyMsg*
 
 void SyncWorker::DoReducing()
 {
+    std::cerr << "Do Reducing!\n";
 
     std::vector<std::ifstream> shardFiles;
 
@@ -210,7 +211,7 @@ void SyncWorker::DoReducing()
 
         if (!shardFile.is_open())
         {
-            std::cout << "Couldn't open " << fileName << "\n";
+            std::cerr << "Couldn't open " << fileName << "\n";
             continue;
         }
 
@@ -226,8 +227,8 @@ void SyncWorker::DoReducing()
         }
     }
 
-    std::cout << "keyvaluepairs has " << keyValuePairs.size() << "\n";
-    std::cout << "Done reading all files, time to reduce.\n";
+    std::cerr << "keyvaluepairs has " << keyValuePairs.size() << "\n";
+    std::cerr << "Done reading all files, time to reduce.\n";
 
     for (std::map<std::string, std::vector<std::string>>::iterator i = keyValuePairs.begin(); i != keyValuePairs.end(); i++)
     {
@@ -249,7 +250,7 @@ Status SyncWorker::Reduce(ServerContext * context, const ReduceSubset* request, 
 
 Status SyncWorker::WriteReduceFile(ServerContext * context, const EmptyMsg* request, Ack * reply)
 {
-    std::cout << "WriteReducetoFile RPC recevied" << "\n";
+    std::cerr << "WriteReducetoFile RPC recevied" << "\n";
 
     SetStatusCode( STATUS_CODE_WRITING_REDUCE );
 
@@ -262,7 +263,7 @@ Status SyncWorker::WriteReduceFile(ServerContext * context, const EmptyMsg* requ
 
 Status SyncWorker::DiscardReduceResults(ServerContext * context, const EmptyMsg* request, Ack * reply)
 {
-    std::cout << "DiscardReduceResults RPC recevied" << "\n";
+    std::cerr << "DiscardReduceResults RPC recevied" << "\n";
 
     SetStatusCode(STATUS_CODE_REDUCE_DUMP_RESULTS);
 

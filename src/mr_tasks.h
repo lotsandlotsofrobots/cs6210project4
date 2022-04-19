@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 #include <fstream>
+#include <experimental/filesystem>
 #include<bits/stdc++.h>
 
 /* CS6210_TASK Implement this data structureas per your implementation.
@@ -53,9 +54,11 @@ inline BaseMapperInternal::BaseMapperInternal()
 
 inline bool BaseMapperInternal::Setup()
 {
-		std::cout << "Setting up:\n" << "\n";
+		std::cerr << "Setting up:\n" << "\n";
 
-		//std::string intermediateOutputFile = OutputDirectory + "/mapper_" + std::to_string(WorkerID);
+
+		system("mkdir intermediate");
+
 		std::string intermediateOutputFile = "./intermediate/mapper_" + std::to_string(WorkerID);
 
 		for(int i = 0; i < NumberOfFiles; i++)
@@ -65,7 +68,7 @@ inline bool BaseMapperInternal::Setup()
 
 				if (!outFile->is_open())
 				{
-				  	std::cout << "Could not open output file for writing!\n";
+				  	std::cerr << "Could not open output file for writing!\n";
 				  	return false;
 				}
 
@@ -79,7 +82,7 @@ inline bool BaseMapperInternal::Setup()
 /* CS6210_TASK Implement this function */
 inline void BaseMapperInternal::emit(const std::string& key, const std::string& val)
 {
-		//std::cout << "Dummy emit by BaseMapperInternal: " << key << ", " << val << std::endl;
+		//std::cerr << "Dummy emit by BaseMapperInternal: " << key << ", " << val << std::endl;
 
 		mappedKeyValuePairs.push_back(make_pair(key, val));
 }
@@ -88,7 +91,7 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 
 inline bool BaseMapperInternal::WriteShardToIntermediateFile()
 {
-	  //std::cout << "Base mapper writing to intermediate files:";
+	  std::cerr << "Base mapper writing to intermediate files:";
 
 		for (int i = 0; i < mappedKeyValuePairs.size(); i++)
 		{
@@ -172,7 +175,7 @@ inline BaseReducerInternal::BaseReducerInternal() {
 
 inline void BaseReducerInternal::Setup()
 {
-		std::cout << "Setting up:\n" << "\n";
+		std::cerr << "Setting up:\n" << "\n";
 
 		outputFile = std::ofstream(OutputDirectory + "/reduce_" + std::to_string(WorkerID) + ".out");
 
@@ -188,15 +191,15 @@ inline void BaseReducerInternal::emit(const std::string& key, const std::string&
 			  reduceKeyValuePairs[key] = val;
 		//}
 
-		//std::cout << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
+		//std::cerr << "Dummy emit by BaseReducerInternal: " << key << ", " << val << std::endl;
 
-		//std::cout << "Emit called (" << key << ", " << val << ")\n";
+		//std::cerr << "Emit called (" << key << ", " << val << ")\n";
 }
 
 
 inline void BaseReducerInternal::WriteReduce()
 {
-		std::cout << "Write reduce called.\n";
+		std::cerr << "Write reduce called.\n";
 
 		for (std::map<std::string, std::string>::iterator i = reduceKeyValuePairs.begin(); i != reduceKeyValuePairs.end(); i++)
 		{
