@@ -207,13 +207,13 @@ bool Master::run()
 						{
 							  case STATUS_CODE_IDLE:
 								{
-										std::cerr << "Worker " << std::to_string(i) << " is IDLE\n";
+										//std::cerr << "Worker " << std::to_string(i) << " is IDLE\n";
 										TryToAssignWorkToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_MAP_WORKING:
 								{
-										std::cerr << "Worker " << std::to_string(i) << " is WORKING\n";
+										//std::cerr << "Worker " << std::to_string(i) << " is WORKING\n";
 										SendPingRPCToWorker(ws);
 
 										if (ws->slowWorkerFlags == WORKER_FLAGS_SLOW)
@@ -233,7 +233,7 @@ bool Master::run()
 								{
 									  // complicated case...  what do we do with this?
 										// reassign the shard, but NOT to this worker (?)
-										std::cerr << "Worker " << std::to_string(i) << " is FAILED\n";
+										//std::cerr << "Worker " << std::to_string(i) << " is FAILED\n";
 
 										ws->assignedShard->workersThatAttemptedThis.push_back(ws->workerID);
 										ws->state = STATUS_CODE_IDLE;
@@ -269,7 +269,7 @@ bool Master::run()
 								}
 								case STATUS_CODE_MISSING:
 								{
-										std::cerr << "Worker " << std::to_string(i) << " is MISSING\n";
+										//std::cerr << "Worker " << std::to_string(i) << " is MISSING\n";
 
 										// reassign it's work
 										FileShard * shard = ws->assignedShard;
@@ -281,13 +281,13 @@ bool Master::run()
 								}
 								case STATUS_CODE_WRITING_MAP:
 								{
-									  std::cerr << "Waiting for worker " << std::to_string(i) << " to finish writing map "  << " for shard " << std::to_string(ws->assignedShard->shardID) << ".\n";
+									  //std::cerr << "Waiting for worker " << std::to_string(i) << " to finish writing map "  << " for shard " << std::to_string(ws->assignedShard->shardID) << ".\n";
 										SendPingRPCToWorker(ws);
 										break;
 								}
 								case STATUS_CODE_MAP_WRITE_COMPLETE:
 								{
-										std::cerr << "Done writing worker map for worker " << std::to_string(i)  << " for shard " << std::to_string(ws->assignedShard->shardID) << "\n";
+										//std::cerr << "Done writing worker map for worker " << std::to_string(i)  << " for shard " << std::to_string(ws->assignedShard->shardID) << "\n";
 
 										ws->state = STATUS_CODE_IDLE;
 										ws->assignedShard->state = FILE_SHARD_STATE_COMPLETE;
@@ -300,7 +300,7 @@ bool Master::run()
 						}
 				}
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let everyone get started
+				std::this_thread::sleep_for(std::chrono::milliseconds(25)); // let everyone get started
 
 		}
 
@@ -430,7 +430,7 @@ bool Master::run()
             }
 				}
 
-		    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let everyone get started
+		    std::this_thread::sleep_for(std::chrono::milliseconds(25)); // let everyone get started
 
 		}
 
@@ -580,7 +580,7 @@ void Master::SendWriteReduceToFile(WorkerStatus * ws)
 
 void Master::SendDropReduceToFile(WorkerStatus * ws)
 {
-		std::cerr << "Sending drop reduce to file\n";
+		//std::cerr << "Sending drop reduce to file\n";
 
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
@@ -608,7 +608,7 @@ void Master::SendDropReduceToFile(WorkerStatus * ws)
 
 void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 {
-	 	std::cerr << "Sending shard " << shard->shardID << "\n";
+	 	//std::cerr << "Sending shard " << shard->shardID << "\n";
 
 
 		masterworker::ShardInfo  request;
@@ -656,7 +656,7 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 
 void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 {
-		std::cerr << "Sending ping to worker\n";
+		//std::cerr << "Sending ping to worker\n";
 
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
@@ -741,7 +741,7 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws, int numberOfShardsT
 
 void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 {
-		std::cerr << "Sending write intermediate file\n";
+		//std::cerr << "Sending write intermediate file\n";
 
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;
@@ -769,7 +769,7 @@ void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 
 void Master::SendDropIntermediateToFile(WorkerStatus * ws)
 {
-		std::cerr << "Sending drop intermediate file\n";
+		//std::cerr << "Sending drop intermediate file\n";
 
 		masterworker::EmptyMsg request;
 		masterworker::Ack        reply;

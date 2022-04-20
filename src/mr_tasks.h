@@ -244,9 +244,9 @@ inline void BaseReducerInternal::WriteReduce(int reduceID)
 			  outputFile << i->first << " " << i->second << "\n";
 		}
 
-		outputFile.flush();
+		//outputFile.flush();
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
 
 
