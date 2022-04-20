@@ -34,17 +34,17 @@ class Master {
 
 	struct WorkerStatus
 	{
-			int                 workerID;
-			std::string         ipAndPort;
-			int                 state;
-			FileShard *         assignedShard;
-			ReduceTask *        assignedReduce;
-			unsigned long long  lastPingTime;
-			unsigned long long  assignedTime;
-			int                 slowWorkerFlags;
+			int                 workerID = 0;
+			std::string         ipAndPort = "";
+			int                 state = 0;
+			FileShard *         assignedShard = NULL;
+			ReduceTask *        assignedReduce = NULL;
+			unsigned long long  lastPingTime = 0;
+			unsigned long long  assignedTime = 0;
+			int                 slowWorkerFlags = 0;
 
-			std::shared_ptr<grpc::Channel> channel;
-			std::unique_ptr<MapperReducer::Stub> stub;
+			std::shared_ptr<grpc::Channel> channel = NULL;
+			std::unique_ptr<MapperReducer::Stub> stub = NULL;
 	};
 
 
@@ -57,7 +57,7 @@ class Master {
 
 		//void SendShardRPCToWorker(std::string ipAndPort, FileShard &shard);
 		void SendPingRPCToWorker(Master::WorkerStatus * ws);
-		void SendWorkerInfoToWorker(int i, WorkerStatus *ws);
+		void SendWorkerInfoToWorker(int i, WorkerStatus *ws, int numberOfShardsTotal);
 		void SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard);
 		void TryToAssignWorkToWorker(WorkerStatus * ws);
 
@@ -171,9 +171,11 @@ bool Master::run()
 				else
 				{
 	  				//idleWorkers.push_back(ws);
-						SendWorkerInfoToWorker(i, ws);
+						SendWorkerInfoToWorker(i, ws, fileShards.size());
 				}
 		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 
 		// main processing loop
@@ -432,6 +434,35 @@ bool Master::run()
 
 		}
 
+
+
+
+		WorkerStatus * ws = workers[0];
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+
+		masterworker::EmptyMsg request;
+		masterworker::Ack        reply;
+
+		grpc::ClientContext context;
+
+		grpc::Status status = ws->stub->Finish(&context, request, &reply);
+
+		if (status.ok())
+		{
+				//ws->state = reply.response();
+				return false;
+		}
+		else
+		{
+				std::cerr << " - Finish not okay!\n";
+				std::cerr << " - status is " << (status.error_code()) << "\n";
+				std::cerr << " - status msg is " << (status.error_message()) << "\n";
+				ws->state = reply.response();
+		}
+
+
+
 		return true;
 }
 
@@ -664,7 +695,7 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 
 
 
-void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
+void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws, int numberOfShardsTotal)
 {
 		std::cerr << "sending worker info to worker\n";
 
@@ -677,6 +708,17 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws)
 		request.set_outputdirectory(mr_spec->outputDir);
 		request.set_numberofworkers(mr_spec->numberOfWorkers);
 		request.set_numberoffiles(mr_spec->numberOfOutputFiles);
+
+	  request.set_desiredshardsize(mr_spec->desiredShardSize);
+	  request.set_numberofshardstotal(numberOfShardsTotal);
+
+		std::stringstream inputFiles;
+		for (int i = 0; i < mr_spec->inputFiles.size(); i++)
+		{
+			  inputFiles << mr_spec->inputFiles[i] << " ";
+		}
+
+		request.set_inputfiles(inputFiles.str());
 
 		grpc::Status status = ws->stub->SetWorkerInfo(&context, request, &reply);
 

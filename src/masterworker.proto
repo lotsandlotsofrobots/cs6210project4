@@ -14,6 +14,7 @@ service MapperReducer {
     rpc Reduce(ReduceSubset) returns (Ack) {}
     rpc WriteReduceFile(EmptyMsg) returns (Ack) {}
     rpc DiscardReduceResults(EmptyMsg) returns (Ack) {}
+    rpc Finish(EmptyMsg) returns (Ack) {}
 }
 
 
@@ -32,6 +33,9 @@ message WorkerInfo
     string outputDirectory = 2;
     int32 numberOfWorkers = 3;
     int32 numberOfFiles = 4;
+    int32 desiredShardSize = 5;
+    int32 numberOfShardsTotal = 6;
+    string inputFiles = 7;
 }
 
 

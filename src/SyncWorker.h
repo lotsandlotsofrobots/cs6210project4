@@ -48,6 +48,8 @@ public:
     Status WriteReduceFile(ServerContext * context, const EmptyMsg* request, Ack * reply);
     Status DiscardReduceResults(ServerContext * context, const EmptyMsg* request, Ack * reply);
 
+    Status Finish(ServerContext * context, const EmptyMsg* request, Ack * reply);
+
 // Auxilary:
     //void SetupMapper() { mapperImpl->Setup(); }
     //void SetupMapper() { mapperImpl->Setup(); }
@@ -69,9 +71,21 @@ public:
     void SetWorkerID(int i)                { mapperImpl->SetWorkerID(i);         reducerImpl->SetWorkerID(i);        workerID = i; }
     int  GetWorkerID()                     { return workerID; }
 
+    int GetReduceSubset()                  { return reduceSubset; }
+
     void SetOutputDirectory(std::string s) { mapperImpl->SetOutputDirectory(s);  reducerImpl->SetOutputDirectory(s); outputDirectory = s; }
     void SetNumberOfWorkers(int i)         { mapperImpl->SetNumberOfWorkers(i);  reducerImpl->SetNumberOfWorkers(i); numberOfWorkers = i;}
     void SetNumberOfFiles(int i)           { mapperImpl->SetNumberOfFiles(i);    reducerImpl->SetNumberOfFiles(i); }
+
+    void SetdesiredShardSize(int i) { desiredShardSize = 1;  reducerImpl->SetdesiredShardSize(i); }
+    void SetnumberOfShardsTotal(int i) { numberOfShardsTotal = 1;  reducerImpl->SetnumberOfShardsTotal(i); }
+    void SetInputFiles(std::string s) { inputFiles = s; reducerImpl->SetInputFiles(s); }
+
+    int GetdesiredShardSize() { return desiredShardSize; }
+    int GetnumberOfShardsTotal() { return numberOfShardsTotal; }
+
+
+
 
 protected:
     std::thread t;
@@ -81,6 +95,10 @@ protected:
     int workerID;
     int numberOfWorkers;
     std::string outputDirectory;
+
+    int desiredShardSize;
+    int numberOfShardsTotal;
+    std::string inputFiles;
 
     std::string ipAndPort;
     BaseMapperInternal* mapperImpl;

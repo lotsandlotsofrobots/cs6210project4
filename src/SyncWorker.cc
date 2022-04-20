@@ -32,7 +32,7 @@ void MonitorAndDoWork(SyncWorker * worker)
                 worker->DoReducing();
                 break;
             case STATUS_CODE_WRITING_REDUCE:
-                worker->GetReducerImpl()->WriteReduce();
+                worker->GetReducerImpl()->WriteReduce(worker->GetReduceSubset());
                 worker->SetStatusCode(STATUS_CODE_REDUCE_WRITE_COMPLETE);
                 break;
             case STATUS_CODE_REDUCE_DUMP_RESULTS:
@@ -71,7 +71,7 @@ void SyncWorker::run()
 
 void SyncWorker::DoShardMapping()
 {
-    std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
+    //std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n\n";
 
     std::ifstream shard(fileShardArg.fileName);
 
@@ -142,6 +142,11 @@ Status SyncWorker::SetWorkerInfo( ServerContext * context, const WorkerInfo* req
     SetOutputDirectory(request->outputdirectory());
     SetNumberOfWorkers(request->numberofworkers());
     SetNumberOfFiles(request->numberoffiles());
+
+    SetdesiredShardSize(request->desiredshardsize());
+    SetnumberOfShardsTotal(request->numberofshardstotal());
+    SetInputFiles(request->inputfiles());
+
     mapperImpl->Setup();
     reducerImpl->Setup();
 
@@ -273,7 +278,17 @@ Status SyncWorker::DiscardReduceResults(ServerContext * context, const EmptyMsg*
 
 
 
+Status SyncWorker::Finish(ServerContext * context, const EmptyMsg* request, Ack * reply)
+{
+    std::cerr << "Finish RPC recevied" << "\n";
 
+    //SetStatusCode(STATUS_CODE_REDUCE_DUMP_RESULTS);
+    reducerImpl->DebugMD5print();
+
+
+    reply->set_response(1);
+    return Status::OK;
+}
 
 
 

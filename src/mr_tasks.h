@@ -40,6 +40,8 @@ struct BaseMapperInternal {
 
 		bool WriteShardToIntermediateFile();
 		bool DiscardShardResults();
+
+
 };
 
 
@@ -56,8 +58,14 @@ inline bool BaseMapperInternal::Setup()
 {
 		std::cerr << "Setting up:\n" << "\n";
 
+    if (WorkerID == 0)
+		{
+				system("rm intermediate/*");
+				system("mkdir -p intermediate");
+		}
 
-		system("mkdir intermediate");
+//   	system("rm intermediate/*");
+//		system("mkdir -p intermediate");
 
 		std::string intermediateOutputFile = "./intermediate/mapper_" + std::to_string(WorkerID);
 
@@ -91,7 +99,7 @@ inline void BaseMapperInternal::emit(const std::string& key, const std::string& 
 
 inline bool BaseMapperInternal::WriteShardToIntermediateFile()
 {
-	  std::cerr << "Base mapper writing to intermediate files:";
+	  //std::cerr << "Base mapper writing to intermediate files:";
 
 		for (int i = 0; i < mappedKeyValuePairs.size(); i++)
 		{
@@ -148,6 +156,10 @@ struct BaseReducerInternal {
     int          NumberOfFiles;
 		int          ReduceSubset;
 
+		int          desiredShardSize;
+		int          numberOfShardsTotal;
+		std::string  inputFiles;
+
 		std::ofstream outputFile;
 
 		std::map<std::string, std::string> reduceKeyValuePairs;
@@ -159,25 +171,48 @@ struct BaseReducerInternal {
     void SetReduceSubset(int i) { ReduceSubset = i; }
 		void Setup();
 
-		void WriteReduce();
+		void WriteReduce(int reduceID);
 		void DiscardReduce();
+
+		void SetdesiredShardSize(int i) { desiredShardSize = i; }
+		void SetnumberOfShardsTotal(int i) { numberOfShardsTotal = i; }
+		void SetInputFiles(std::string s) { inputFiles = s; }
+
+		void DebugMD5print();
 };
 
 
 /* CS6210_TASK Implement this function */
 inline BaseReducerInternal::BaseReducerInternal() {
 		WorkerID = 0;
-		OutputDirectory = "";
+		OutputDirectory = "unassigned";
 		NumberOfWorkers = 0;
 		NumberOfFiles = 0;
 		ReduceSubset = 0;
+		inputFiles = "unassigned";
 }
 
 inline void BaseReducerInternal::Setup()
 {
 		std::cerr << "Setting up:\n" << "\n";
 
-		outputFile = std::ofstream(OutputDirectory + "/reduce_" + std::to_string(WorkerID) + ".out");
+		std::string rm = "rm " + OutputDirectory + "/*";
+		std::string mkdir = "mkdir -p " + OutputDirectory;
+
+		std::cerr << "WorkerID: " << std::to_string(WorkerID) << "\n";
+		std::cerr << "Output Dir: " << OutputDirectory << "\n";
+		std::cerr << "Number of workers: " << std::to_string(NumberOfWorkers) << "\n";
+		std::cerr << "Number of files: " << std::to_string(NumberOfFiles) << "\n";
+
+		std::cerr << "Desired shard size: " << std::to_string(desiredShardSize) << "\n";
+		std::cerr << "Number of shards total: " << std::to_string(numberOfShardsTotal) << "\n";
+		std::cerr << "Input files: " << this->inputFiles << "\n";
+
+		if (WorkerID == 0)
+		{
+				system(rm.c_str());
+				system(mkdir.c_str());
+		}
 
 }
 
@@ -197,8 +232,11 @@ inline void BaseReducerInternal::emit(const std::string& key, const std::string&
 }
 
 
-inline void BaseReducerInternal::WriteReduce()
+inline void BaseReducerInternal::WriteReduce(int reduceID)
 {
+		std::string filename = OutputDirectory + "/reduce_" + std::to_string(reduceID) + ".out";
+		outputFile = std::ofstream(filename);
+
 		std::cerr << "Write reduce called.\n";
 
 		for (std::map<std::string, std::string>::iterator i = reduceKeyValuePairs.begin(); i != reduceKeyValuePairs.end(); i++)
@@ -207,10 +245,98 @@ inline void BaseReducerInternal::WriteReduce()
 		}
 
 		outputFile.flush();
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
+
+
+
+
+
+//		system(cmd.c_str());
+
 		reduceKeyValuePairs.clear();
 }
 
 inline void BaseReducerInternal::DiscardReduce()
 {
 	  reduceKeyValuePairs.clear();
+}
+
+
+inline void BaseReducerInternal::DebugMD5print()
+{
+		// Combine
+
+		std::string cmd1 = "cat ./output/* > ./output/combined.out";
+		char buffer1[128];
+		std::string result1 = "";
+		FILE* pipe1 = popen(cmd1.c_str(), "r");
+
+		if (!pipe1) throw std::runtime_error("popen() failed!");
+		try {
+				std::cerr << "Results of cat combine:\n";
+				while (fgets(buffer1, sizeof buffer1, pipe1) != NULL) {
+						result1 += buffer1;
+				}
+		} catch (...) {
+				pclose(pipe1);
+				throw;
+		}
+		pclose(pipe1);
+
+		std::cerr << result1 << "\n";
+
+
+
+
+		// Sort
+
+		std::string cmd2 = "sort ./output/combined.out > ./output/sortedcombined.out";
+		char buffer2[128];
+		std::string result2 = "";
+		FILE* pipe2 = popen(cmd2.c_str(), "r");
+
+		if (!pipe2) throw std::runtime_error("popen() failed!");
+		try {
+				std::cerr << "Results of sort:\n";
+
+				while (fgets(buffer2, sizeof buffer2, pipe2) != NULL) {
+						result2 += buffer2;
+				}
+		} catch (...) {
+				pclose(pipe2);
+				throw;
+		}
+		pclose(pipe2);
+
+		std::cerr << result2 << "\n";
+
+
+
+
+		// md5
+
+		std::string filename = "./output/sortedcombined.out";
+
+		std::string cmd3 = "md5sum " + filename;
+
+		char buffer3[128];
+		std::string result3 = "";
+		FILE* pipe3 = popen(cmd3.c_str(), "r");
+
+		if (!pipe3) throw std::runtime_error("popen() failed!");
+		try {
+			std::cerr << "Results of sortcombine:\n";
+
+				while (fgets(buffer3, sizeof buffer3, pipe3) != NULL) {
+						result3 += buffer3;
+				}
+		} catch (...) {
+				pclose(pipe3);
+				throw;
+		}
+		pclose(pipe3);
+
+		std::cerr << "MD5SUM of file!  - " << result3 << "\n";
 }
