@@ -128,7 +128,7 @@ inline bool read_mr_spec_from_config_file(const std::string& config_filename, Ma
 				{
 						try
 						{
-								mr_spec.desiredShardSize = stoi(value);
+								mr_spec.desiredShardSize = stoi(value) * 1024;
 						}
 						catch (std::exception &e)
 						{

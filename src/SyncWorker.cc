@@ -41,7 +41,7 @@ void MonitorAndDoWork(SyncWorker * worker)
                 break;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
 }
@@ -103,13 +103,15 @@ void SyncWorker::DoShardMapping()
 
     if (bytes != fileShardArg.offset + fileShardArg.shardSize)
     {
-        std::cerr << "Something went wrong here..\n";
+        /*std::cerr << "Something went wrong here..\n";
         std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "\n";
         std::cerr << "WorkerID: " << std::to_string(workerID) << "\n";
         std::cerr << "Filename: " << fileShardArg.fileName << "\n";
         std::cerr << "Offset:   " << std::to_string(fileShardArg.offset) << "\n";
         std::cerr << "Size:     " << std::to_string(fileShardArg.shardSize) << "\n";
-        std::cerr << "Position: " << std::to_string(bytes) << "\n";
+        std::cerr << "Position: " << std::to_string(bytes) << "\n";*/
+
+        std::cerr << "ShardID : " << std::to_string(fileShardArg.shardID) << "(" << fileShardArg.fileName << " - )" << std::to_string(fileShardArg.offset) << " .. The record with the issue is: " << record << "\n";
 
         SetStatusCode(STATUS_CODE_FAILED | STATUS_CODE_SHARD_MATH_ERROR);
 
