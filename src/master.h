@@ -527,6 +527,9 @@ void Master::SendReduceToWorker(WorkerStatus * ws, ReduceTask * rt)
 
 		grpc::ClientContext context;
 
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
+
 		grpc::Status status = ws->stub->Reduce(&context, request, &reply);
 
 		if (status.ok())
@@ -563,6 +566,9 @@ void Master::SendWriteReduceToFile(WorkerStatus * ws)
 
 		grpc::ClientContext context;
 
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
+
 		grpc::Status status = ws->stub->WriteReduceFile(&context, request, &reply);
 
 		if (status.ok())
@@ -588,6 +594,9 @@ void Master::SendDropReduceToFile(WorkerStatus * ws)
 		masterworker::Ack        reply;
 
 		grpc::ClientContext context;
+
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
 
 		grpc::Status status = ws->stub->DiscardReduceResults(&context, request, &reply);
 
@@ -624,6 +633,9 @@ void Master::SendShardRPCToWorker(WorkerStatus * ws, FileShard * shard)
 		request.set_shardid(shard->shardID);
 
 		grpc::ClientContext context;
+
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
 
 		grpc::Status status = ws->stub->MapShard(&context, request, &reply);
 
@@ -664,6 +676,9 @@ void Master::SendPingRPCToWorker(Master::WorkerStatus * ws)
 		masterworker::Ack        reply;
 
 		grpc::ClientContext context;
+
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
 
 		grpc::Status status = ws->stub->Ping(&context, request, &reply);
 
@@ -722,6 +737,9 @@ void Master::SendWorkerInfoToWorker(int i, WorkerStatus *ws, int numberOfShardsT
 
 		request.set_inputfiles(inputFiles.str());
 
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
+
 		grpc::Status status = ws->stub->SetWorkerInfo(&context, request, &reply);
 
 		if (status.ok())
@@ -749,6 +767,9 @@ void Master::SendWriteIntermediateToFile(WorkerStatus * ws)
 		masterworker::Ack        reply;
 
 		grpc::ClientContext context;
+
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
 
 		grpc::Status status = ws->stub->WriteShardToIntermediateFile(&context, request, &reply);
 
@@ -778,6 +799,9 @@ void Master::SendDropIntermediateToFile(WorkerStatus * ws)
 
 		grpc::ClientContext context;
 
+		std::chrono::time_point<std::chrono::system_clock> deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+		context.set_deadline(deadline);
+				
 		grpc::Status status = ws->stub->DiscardShardResults(&context, request, &reply);
 
 		if (status.ok())
